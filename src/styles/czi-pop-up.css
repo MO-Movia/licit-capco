@@ -1,0 +1,26 @@
+.czi-editor-frameset .molcap-czi-pop-up-modal-mask {
+  background-color: rgba(0 0 0 50%);
+  height: 100vh;
+  left: 0;
+  position: fixed;
+  top: 0;
+  width: 100vw;
+}
+
+.czi-editor-frameset .molcap-capco-pop-up-element {
+  background-color: white;
+  width: 760px;
+}
+
+.czi-editor-frameset .molcap-capco-modal-content {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  padding: 2px;
+  font-size: 11px;
+  max-width: 950px;
+  min-width: 390px;
+  background-color: #fff;
+  background-clip: padding-box;
+  border: 1px solid rgba(0 0 0 20%);
+  border-radius: 0.3rem;
+  outline: 0;
+}
