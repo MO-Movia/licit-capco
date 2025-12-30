@@ -1,3 +1,10 @@
+/**
+ * @license MIT
+ * @copyright Copyright 2025 Modus Operandi Inc. All Rights Reserved.
+ *
+ * @jest-environment jsdom
+ */
+
 import { CapcoContextMenu, capcoContextMenuProps } from './capcoContextMenu';
 import type { CapcoEle } from './contextMenu';
 import { CapcoPlugin } from './CapcoPlugin';

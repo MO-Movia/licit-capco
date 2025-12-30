@@ -1,3 +1,10 @@
+/**
+ * @license MIT
+ * @copyright Copyright 2025 Modus Operandi Inc. All Rights Reserved.
+ *
+ * @jest-environment jsdom
+ */
+
 import {CapcoView} from './capcoView';
 import {CapcoPlugin} from './index';
 import {EditorState} from 'prosemirror-state';

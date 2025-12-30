@@ -1,3 +1,10 @@
+/**
+ * @license MIT
+ * @copyright Copyright 2025 Modus Operandi Inc. All Rights Reserved.
+ *
+ * @jest-environment jsdom
+ */
+
 import { Item } from './item';
 import * as utils from './utils';
 import * as item from './item';

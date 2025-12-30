@@ -1,3 +1,8 @@
+/**
+ * @license MIT
+ * @copyright Copyright 2025 Modus Operandi Inc. All Rights Reserved.
+ */
+
 // Supporting class for CapcoEmbeddedActionsParser
 // Represents each code - description row in the compartment.
 export class Item {

@@ -1,3 +1,10 @@
+/**
+ * @license MIT
+ * @copyright Copyright 2025 Modus Operandi Inc. All Rights Reserved.
+ *
+ * @jest-environment jsdom
+ */
+
 import { Schema, ResolvedPos, Slice } from 'prosemirror-model';
 import { EditorState, Transaction, TextSelection } from 'prosemirror-state';
 import { EditorView } from 'prosemirror-view';
@@ -1567,13 +1574,13 @@ describe('capco plugin', () => {
     ).toBeDefined();
   });
   it('should handle enhancedTableFigureCapco', () => {
-    expect(capcoplugin.enhancedTableFigureCapco('TBD')).toBeDefined();
-    expect(capcoplugin.enhancedTableFigureCapco('U')).toBeDefined();
-    expect(capcoplugin.enhancedTableFigureCapco('S')).toBeDefined();
-    expect(capcoplugin.enhancedTableFigureCapco('C')).toBeDefined();
-    expect(capcoplugin.enhancedTableFigureCapco('CUI')).toBeDefined();
-    expect(capcoplugin.enhancedTableFigureCapco('TS')).toBeDefined();
-    expect(capcoplugin.enhancedTableFigureCapco('')).toBeDefined();
+    expect(capcoplugin.enhancedTableFigureCapco('TBD',true)).toBeDefined();
+    expect(capcoplugin.enhancedTableFigureCapco('U',true),).toBeDefined();
+    expect(capcoplugin.enhancedTableFigureCapco('S',true)).toBeDefined();
+    expect(capcoplugin.enhancedTableFigureCapco('C',true)).toBeDefined();
+    expect(capcoplugin.enhancedTableFigureCapco('CUI',true)).toBeDefined();
+    expect(capcoplugin.enhancedTableFigureCapco('TS',true)).toBeDefined();
+    expect(capcoplugin.enhancedTableFigureCapco('',true)).toBeDefined();
   });
   it('should handle getCursorPosition', () => {
     expect(

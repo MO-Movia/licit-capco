@@ -1,3 +1,8 @@
+/**
+ * @license MIT
+ * @copyright Copyright 2025 Modus Operandi Inc. All Rights Reserved.
+ */
+
 // Local storage of CAPCO
 import { CAPCOKEY } from './constants';
 import { EditorView } from 'prosemirror-view';

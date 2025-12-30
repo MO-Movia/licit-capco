@@ -1,3 +1,8 @@
+/**
+ * @license MIT
+ * @copyright Copyright 2025 Modus Operandi Inc. All Rights Reserved.
+ */
+
 import { Schema } from 'prosemirror-model';
 import type { NodeSpec } from 'prosemirror-model';
 import {
@@ -120,7 +125,9 @@ function createCapcoNodeAttributes(schema) {
   ];
   const NEWATTRS = [CAPCOKEY, 'isValidate'];
   contentArr.forEach((content) => {
-    createAttribute(content, NEWATTRS, null);
+    if (content !== undefined) {
+      createAttribute(content, NEWATTRS, null);
+    }
   });
 }
 
@@ -136,7 +143,9 @@ function createCapcoDocAttributes(schema: Schema, mode: CAPCOMODE) {
 
 function createCapcoModeDocAttributes(contentArr, mode: CAPCOMODE) {
   contentArr.forEach((content) => {
-    createAttribute(content, [CAPCOMODEKEY], mode || CAPCOMODE.NONE);
+    if (content !== undefined) {
+      createAttribute(content, [CAPCOMODEKEY], mode || CAPCOMODE.NONE);
+    }
   });
 }
 
