@@ -39,11 +39,9 @@
     "tippy.js": "^6.3.7"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.6.4",
-    "@testing-library/react": "^16.3.0",
     "@types/jest": "^30.0.0",
-    "@types/react": "^19.2.2",
-    "@types/react-dom": "^19.2.1",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
     "@modusoperandi/eslint-config": "^3.0.0",
     "copyfiles": "^2.4.1",
     "eslint": "^9.37.0",
@@ -55,7 +53,7 @@
     "jest-sonar-reporter": "^2.0.0",
     "prettier": "^3.6.2",
     "prosemirror-test-builder": "^1.1.1",
-    "react-dom": "^19.2.0",
+    "react-dom": "^18.0.0",
     "ts-jest": "^29.4.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"

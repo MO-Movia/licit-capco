@@ -1,3 +1,8 @@
+/**
+ * @license MIT
+ * @copyright Copyright 2025 Modus Operandi Inc. All Rights Reserved.
+ */
+
 import { getAnItem, removeAnItem, Item } from './item';
 
 // Supporting class for CapcoEmbeddedActionsParser

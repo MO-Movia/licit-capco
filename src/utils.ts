@@ -1,3 +1,8 @@
+/**
+ * @license MIT
+ * @copyright Copyright 2025 Modus Operandi Inc. All Rights Reserved.
+ */
+
 import { Compartment } from './compartment';
 import { CapcoState } from './types';
 import { EditorState } from 'prosemirror-state';

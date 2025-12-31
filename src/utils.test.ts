@@ -1,3 +1,10 @@
+/**
+ * @license MIT
+ * @copyright Copyright 2025 Modus Operandi Inc. All Rights Reserved.
+ *
+ * @jest-environment jsdom
+ */
+
 import { Item } from './item';
 import * as utils from './utils';
 import * as item from './item';
@@ -44,6 +51,9 @@ describe('utils', () => {
   });
   it('should handle getValueWithoutSlash else statement', () => {
     expect(utils.getValueWithoutSlash('TEST,,')).toBe('TEST');
+  });
+  it('should handle getCapcoString else statement', () => {
+    expect(utils.getCapcoString('CUI')).toBe('error');
   });
   it('should handle removeAnItem', () => {
     const fnitem = () => {

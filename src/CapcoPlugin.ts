@@ -1,3 +1,8 @@
+/**
+ * @license MIT
+ * @copyright Copyright 2025 Modus Operandi Inc. All Rights Reserved.
+ */
+
 import {
   Schema,
   Slice,
@@ -223,7 +228,7 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
   }
 
   processCapcoMode(trx: Transaction, state: EditorState): Transaction {
-    if (undefined !== this.mode && state.doc.attrs[CAPCOMODEKEY] != this.mode) {
+    if (undefined !== this.mode &&  undefined !== state.doc.attrs[CAPCOMODEKEY] && state.doc.attrs[CAPCOMODEKEY] != this.mode) {
       const docAttrStep = new SetDocAttrStep(
         CAPCOMODESTEPKEY,
         this.mode,
@@ -364,14 +369,14 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
     }
   }
 
-  enhancedTableFigureCapco(capco: string): string {
+  enhancedTableFigureCapco(capco: string, isFigureBlock: boolean): string {
     const capcoString: Record<string, string> = {
-      TBD: 'To be Determined',
+      TBD: isFigureBlock ? 'TBD' : 'To be Determined',
       U: 'Unclassified',
-      C: 'Confidential',
-      S: 'Secret',
-      TS: 'Top Secret',
-      CUI: 'Controlled Unclassified Information',
+      C: isFigureBlock ? 'C' : 'Confidential',
+      S: isFigureBlock ? 'S' : 'Secret',
+      TS: isFigureBlock ? 'TS' : 'Top Secret',
+      CUI: isFigureBlock ? 'CUI' : 'Controlled Unclassified Information',
     };
     return capcoString[capco] || capco;
   }
@@ -389,7 +394,7 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
     // Default CAPCO value based on CAPCO mode
     let capco: string = SYSTEMCAPCO.TBD;
     if (
-      parseInt(view.state.doc.attrs[CAPCOMODEKEY]) ===
+      Number.parseInt(view.state.doc.attrs[CAPCOMODEKEY]) ===
       CAPCOMODE.FORCED.valueOf()
     ) {
       capco = node.attrs.capco;
@@ -482,14 +487,14 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
     let posx =
       e.pageX ??
       e.clientX +
-        ((document.documentElement.scrollLeft ?? 0) +
-          (document.body?.scrollLeft ?? 0));
+      ((document.documentElement.scrollLeft ?? 0) +
+        (document.body?.scrollLeft ?? 0));
 
     let posy =
       e.pageY ??
       e.clientY +
-        ((document.documentElement.scrollTop ?? 0) +
-          (document.body?.scrollTop ?? 0));
+      ((document.documentElement.scrollTop ?? 0) +
+        (document.body?.scrollTop ?? 0));
 
     // Adjust position to ensure the popup stays within the viewport
     if (posx + popupWidth > viewportWidth) {
@@ -526,8 +531,8 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
 
     // CAPCO mouse tool displayed on left portion of para that is same width as CAPCO
     // Get line height from computed styles
-    const computedStyles = window.getComputedStyle(pm);
-    const lineHeight = parseFloat(computedStyles.lineHeight) || 20; // Default to 20px if unavailable
+    const computedStyles = globalThis.getComputedStyle(pm);
+    const lineHeight = Number.parseFloat(computedStyles.lineHeight) || 20; // Default to 20px if unavailable
     // Check if the mouse is within the first line of the paragraph
     const isFirstLine =
       e.clientY >= startCoords.top && e.clientY <= startCoords.top + lineHeight;
@@ -656,7 +661,7 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
     let capco: string | null = null;
     if (
       CAPCOMODE.NONE.valueOf() !==
-        parseInt(view.state.doc.attrs[CAPCOMODEKEY]) &&
+        Number.parseInt(view.state.doc.attrs[CAPCOMODEKEY]) &&
       slice.content?.childCount !== 0
     ) {
       // Copy full paragraph, the pasted paragraph shall have same CAPCO.
@@ -666,8 +671,8 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
       capco =
         'ordered_list' === name || 'bullet_list' === name
           ? slice.content.child(0).content.child(0).content.child(0).attrs[
-              CAPCOKEY
-            ]
+          CAPCOKEY
+          ]
           : slice.content.child(0).attrs[CAPCOKEY];
     } else {
       // In None mode, use TBD as capco always.
@@ -754,20 +759,27 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
     const capcoColors: Record<string, string> = {
       UNCLASSIFIED: '#006E3A', // green
       CONFIDENTIAL: '#0000FF', // blue
+      C: '#0000FF', // blue
       'CONTROLLED UNCLASSIFIED INFORMATION': '#990099', // purple
+      CUI: '#990099', // purple
       SECRET: '#FF0000', // red
+      S: '#FF0000', // red
       'TOP SECRET': '#FFC20E', // yellow-orange
+      TS: '#FFC20E', // yellow-orange
       'TO BE DETERMINED': '#454545', // dark gray
+      TBD: '#454545', // dark gray
     };
 
-    switch (parseInt(state.doc.attrs[CAPCOMODEKEY])) {
+    switch (Number.parseInt(state.doc.attrs[CAPCOMODEKEY])) {
       case CAPCOMODE.FORCED.valueOf(): {
         let capcoText = '';
+        const parentNode = state.doc.resolve(pos);
         if ([TABLE_FIGURE_CAPCO, TABLE_FIGURE].includes(nodeType)) {
           capco = state.doc.nodeAt(getBlockControlCapco(state, pos))?.attrs
             ?.capco;
+          const isFigureBlock = parentNode.parent.type.name === TABLE_FIGURE && parentNode.parent.attrs.figureType === 'figure';
           capcoText = getCapcoString(capco, this.defaultCapco);
-          capcoText = this.enhancedTableFigureCapco(capcoText);
+          capcoText = this.enhancedTableFigureCapco(capcoText, isFigureBlock);
           capcoMark.textContent = capcoText;
           capcoMark.style.color = '#6A5ACD';
         } else {
@@ -775,7 +787,7 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
           capcoMark.textContent = '(' + capcoText + ') ';
         }
         const colorKey = capcoText?.replace(/[()]/g, '').trim().toUpperCase();
-        if (capcoColors[colorKey]) {
+        if (parentNode.parent.type.name === TABLE_FIGURE && capcoColors[colorKey]) {
           capcoMark.style.color = capcoColors[colorKey];
           capcoMark.style.textTransform = 'uppercase';
         }
@@ -792,7 +804,7 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
     if ('' === textContent.trim()) {
       value = NONE;
     } else {
-      switch (parseInt(state.doc.attrs[CAPCOMODEKEY])) {
+      switch (Number.parseInt(state.doc.attrs[CAPCOMODEKEY])) {
         case CAPCOMODE.NONE.valueOf():
           value = NONE;
           break;
