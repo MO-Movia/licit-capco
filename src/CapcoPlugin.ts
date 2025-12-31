@@ -394,7 +394,7 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
     // Default CAPCO value based on CAPCO mode
     let capco: string = SYSTEMCAPCO.TBD;
     if (
-      parseInt(view.state.doc.attrs[CAPCOMODEKEY]) ===
+      Number.parseInt(view.state.doc.attrs[CAPCOMODEKEY]) ===
       CAPCOMODE.FORCED.valueOf()
     ) {
       capco = node.attrs.capco;
@@ -531,8 +531,8 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
 
     // CAPCO mouse tool displayed on left portion of para that is same width as CAPCO
     // Get line height from computed styles
-    const computedStyles = window.getComputedStyle(pm);
-    const lineHeight = parseFloat(computedStyles.lineHeight) || 20; // Default to 20px if unavailable
+    const computedStyles = globalThis.getComputedStyle(pm);
+    const lineHeight = Number.parseFloat(computedStyles.lineHeight) || 20; // Default to 20px if unavailable
     // Check if the mouse is within the first line of the paragraph
     const isFirstLine =
       e.clientY >= startCoords.top && e.clientY <= startCoords.top + lineHeight;
@@ -661,7 +661,7 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
     let capco: string | null = null;
     if (
       CAPCOMODE.NONE.valueOf() !==
-      parseInt(view.state.doc.attrs[CAPCOMODEKEY]) &&
+        Number.parseInt(view.state.doc.attrs[CAPCOMODEKEY]) &&
       slice.content?.childCount !== 0
     ) {
       // Copy full paragraph, the pasted paragraph shall have same CAPCO.
@@ -770,7 +770,7 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
       TBD: '#454545', // dark gray
     };
 
-    switch (parseInt(state.doc.attrs[CAPCOMODEKEY])) {
+    switch (Number.parseInt(state.doc.attrs[CAPCOMODEKEY])) {
       case CAPCOMODE.FORCED.valueOf(): {
         let capcoText = '';
         const parentNode = state.doc.resolve(pos);
@@ -804,7 +804,7 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
     if ('' === textContent.trim()) {
       value = NONE;
     } else {
-      switch (parseInt(state.doc.attrs[CAPCOMODEKEY])) {
+      switch (Number.parseInt(state.doc.attrs[CAPCOMODEKEY])) {
         case CAPCOMODE.NONE.valueOf():
           value = NONE;
           break;
