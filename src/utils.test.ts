@@ -52,6 +52,9 @@ describe('utils', () => {
   it('should handle getValueWithoutSlash else statement', () => {
     expect(utils.getValueWithoutSlash('TEST,,')).toBe('TEST');
   });
+  it('should handle getCapcoString else statement', () => {
+    expect(utils.getCapcoString('CUI')).toBe('error');
+  });
   it('should handle removeAnItem', () => {
     const fnitem = () => {
       return new Item('SCI', 'Sensitive Compartmented Information', 1);

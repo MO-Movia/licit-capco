@@ -16,7 +16,11 @@ import { CapcoPlugin } from './CapcoPlugin';
 import { getParagraphNodeAttrs } from './capcoNodeSpec';
 import { createEditor, doc, p, schema } from 'jest-prosemirror';
 import { CAPCOMODE } from './editorSchema';
-import { CAPCOMODEKEY } from './constants';
+import {
+  CAPCOMODEKEY,
+  TABLE_FIGURE,
+} from './constants';
+import * as utils from './utils';
 
 describe('Capco Plugin', () => {
   const customSchema = new Schema({
@@ -365,7 +369,6 @@ describe('Capco Plugin', () => {
         },
       ],
     };
-
     const doc = customSchema.nodeFromJSON(docJson);
     const state = EditorState.create({
       doc: doc,
@@ -408,6 +411,38 @@ describe('Capco Plugin', () => {
   });
 
   it('processCapcoMode', () => {
+    const customSchema = new Schema({
+      nodes: {
+        doc: {
+          content: 'block+',
+          attrs: {
+            capcoMode: { default: 0 },
+          },
+        },
+        paragraph: {
+          content: 'inline*',
+          group: 'block',
+        },
+        text: {
+          group: 'inline',
+        },
+      },
+    });
+    const mockEditorState1 = EditorState.create({
+      schema: customSchema,
+      doc: customSchema.nodeFromJSON({
+        type: 'doc',
+        attrs: { capcoMode: 1 },
+        content: [
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'Hello world' }],
+          },
+        ],
+      }),
+    });
+    plugin.processCapcoMode(state.tr, mockEditorState1);
+    expect(mockEditorState1.doc.attrs.capcoMode).toBe(1);
     const mState = plugin.processCapcoMode(state.tr, state);
     expect(mState).toBeDefined();
   });
@@ -500,10 +535,19 @@ describe('Capco Plugin', () => {
     dom.setAttribute('capco', '{"ism": {"classification": "U"}}');
     dom.style.zIndex = '1';
     dom.style.opacity = '0.25';
-
     expect(getParagraphNodeAttrs(mockGetAttrs, dom)).not.toBe({
       capco: '',
     });
+  });
+
+  it('getAttrs - skips HTMLElement logic when dom is string', () => {
+    const mockGetAttrs = jest.fn((dom) => {
+      return { source: dom };
+    });
+    const dom = 'plain-string-dom';
+    const result = getParagraphNodeAttrs(mockGetAttrs, dom);
+    expect(mockGetAttrs).toHaveBeenCalledWith(dom);
+    expect(result).toEqual({ source: 'plain-string-dom' });
   });
 
   it('should handle capco plugin', () => {
@@ -1177,6 +1221,60 @@ describe('capco plugin', () => {
     expect(capcoplugin.showHideCapco(mockEditorState, 'SCI')).toBe('none');
   });
 
+  it('should handle showHideCapco with capcomode set to 1', () => {
+    const customSchema = new Schema({
+      nodes: {
+        doc: {
+          attrs: {
+            capcoMode: { default: 0 },
+            author: { default: null },
+          },
+          content: 'paragraph+',
+        },
+        paragraph: {
+          content: 'text*',
+          group: 'block',
+          parseDOM: [{ tag: 'p' }],
+          toDOM() {
+            return ['p', 0];
+          },
+        },
+        text: {
+          group: 'inline',
+        },
+      },
+    });
+    // Create a mock `EditorState` instance with the desired selection
+    const mockEditorState = EditorState.create({
+      doc: customSchema.nodeFromJSON({
+        attrs: { capcoMode: 1, customAttr: { default: 'value' } },
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [
+              {
+                type: 'text',
+                text: 'Hellow world',
+              },
+            ],
+          },
+        ],
+      }),
+      selection: TextSelection.create(
+        state.doc,
+        /* headPosition */ 0,
+
+        /* selectionDepth */ 0
+      ),
+    });
+
+    const capcoplugin = new CapcoPlugin();
+    const capcomark = document.createElement('div');
+    capcomark.textContent = '( "SCI" :"TBD")';
+    expect(capcoplugin.showHideCapco(mockEditorState, 'SCI')).toBe('');
+  });
+
   it('should handle getposition', () => {
     const capcoplugin = new CapcoPlugin();
     const mockMouseEvent = new MouseEvent(
@@ -1574,13 +1672,20 @@ describe('capco plugin', () => {
     ).toBeDefined();
   });
   it('should handle enhancedTableFigureCapco', () => {
-    expect(capcoplugin.enhancedTableFigureCapco('TBD',true)).toBeDefined();
-    expect(capcoplugin.enhancedTableFigureCapco('U',true),).toBeDefined();
-    expect(capcoplugin.enhancedTableFigureCapco('S',true)).toBeDefined();
-    expect(capcoplugin.enhancedTableFigureCapco('C',true)).toBeDefined();
-    expect(capcoplugin.enhancedTableFigureCapco('CUI',true)).toBeDefined();
-    expect(capcoplugin.enhancedTableFigureCapco('TS',true)).toBeDefined();
-    expect(capcoplugin.enhancedTableFigureCapco('',true)).toBeDefined();
+    expect(capcoplugin.enhancedTableFigureCapco('TBD', true)).toBeDefined();
+    expect(capcoplugin.enhancedTableFigureCapco('U', true),).toBeDefined();
+    expect(capcoplugin.enhancedTableFigureCapco('S', true)).toBeDefined();
+    expect(capcoplugin.enhancedTableFigureCapco('C', true)).toBeDefined();
+    expect(capcoplugin.enhancedTableFigureCapco('CUI', true)).toBeDefined();
+    expect(capcoplugin.enhancedTableFigureCapco('TS', true)).toBeDefined();
+    expect(capcoplugin.enhancedTableFigureCapco('', true)).toBeDefined();
+    expect(capcoplugin.enhancedTableFigureCapco('TBD', false)).toBeDefined();
+    expect(capcoplugin.enhancedTableFigureCapco('U', false),).toBeDefined();
+    expect(capcoplugin.enhancedTableFigureCapco('S', false)).toBeDefined();
+    expect(capcoplugin.enhancedTableFigureCapco('C', false)).toBeDefined();
+    expect(capcoplugin.enhancedTableFigureCapco('CUI', false)).toBeDefined();
+    expect(capcoplugin.enhancedTableFigureCapco('TS', false)).toBeDefined();
+    expect(capcoplugin.enhancedTableFigureCapco('', false)).toBeDefined();
   });
   it('should handle getCursorPosition', () => {
     expect(
@@ -1775,5 +1880,77 @@ describe('capco plugin', () => {
     const tableNode = schema1.nodeFromJSON(tableNodeJson1);
 
     expect(capcoplugin.isSpecialTableHeader(tableNode)).toBeDefined();
+  });
+});
+
+describe('setCapcoContent color mapping branch', () => {
+  it('applies color and uppercase when colorKey exists', () => {
+    const schema = new Schema({
+      nodes: {
+        doc: {
+          attrs: { capcoMode: { default: 0 } },
+          content: 'block+',
+        },
+        table_figure: {
+          group: 'block',
+          content: 'paragraph+',
+          attrs: {
+            figureType: { default: 'figure' },
+            capco: { default: 'SECRET' },
+          },
+          toDOM() {
+            return ['div', 0];
+          },
+        },
+        paragraph: {
+          content: 'text*',
+          group: 'block',
+          toDOM() {
+            return ['p', 0];
+          },
+        },
+        text: {
+          group: 'inline',
+        },
+      },
+    });
+
+    jest.spyOn(utils, 'getBlockControlCapco').mockReturnValue(1);
+    jest.spyOn(utils, 'getCapcoString').mockReturnValue('SECRET');
+
+    const state = EditorState.create({
+      doc: schema.nodeFromJSON({
+        type: 'doc',
+        attrs: { capcoMode: CAPCOMODE.FORCED },
+        content: [
+          {
+            type: 'table_figure',
+            attrs: {
+              figureType: 'figure',
+              capco: 'SECRET',
+            },
+            content: [
+              {
+                type: 'paragraph',
+                content: [{ type: 'text', text: 'Hello' }],
+              },
+            ],
+          },
+        ],
+      }),
+    });
+
+    const plugin = new CapcoPlugin();
+    const capcoMark = document.createElement('span');
+
+    plugin.setCapcoContent(
+      state,
+      'SECRET',
+      capcoMark,
+      TABLE_FIGURE,
+      1
+    );
+
+    expect(capcoMark.style.color).toBe('rgb(106, 90, 205)');
   });
 });

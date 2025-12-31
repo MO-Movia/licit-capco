@@ -201,6 +201,34 @@ describe('Capco Builder Component', () => {
     expect(def[0].name).toBeUndefined();
   });
 
+  it('should call createCustomCapcoMenu with customCapcoListItems null', () => {
+    const defMenu = [];
+    localStorage.setItem(
+      'customCapcoList',
+      JSON.stringify([
+        JSON.stringify({
+          ism: {
+            version: '1',
+            classification: 'CUI',
+            ownerProducer: ['USA'],
+            sciControls: [],
+            sarIdentifiers: [],
+            atomicEnergyMarkings: [],
+            fgiSourceOpen: [],
+            releasableTo: [],
+            disseminationControls: [],
+            nonICmarkings: [],
+          },
+          portionMarking: 'TBD',
+        }),
+      ])
+    );
+    const menuList = capcoContextMenu.createCustomCapcoMenu(defMenu, [
+      null
+    ]);
+    expect(menuList.length).toBe(0);
+  });
+
   it('should handle closePopUP', () => {
     let hit = 0;
     const capcocontextmenuprops = {
@@ -1005,6 +1033,14 @@ describe('Capco Builder Component', () => {
   it('should handle render', () => {
     expect(capcoContextMenu.render()).toBeDefined();
   });
+  it('should remove customcapco when capco is string.empty', () => {
+    const customCapcoListItems = [{ portionMarking: 'SCI' } as CapcoState];
+    expect(capcoContextMenu.removeCustomCapco('', customCapcoListItems)).toBe(false);
+  });
+  it('should remove customcapco when capcoList is null', () => {
+    expect(capcoContextMenu.removeCustomCapco('SCI', null)).toBe(false);
+  });
+
   it('should handle render 2', () => {
     const cProps: capcoContextMenuProps = {
       editorView: editorView,
@@ -1140,6 +1176,136 @@ describe('Capco Builder Component', () => {
     expect(spy).toHaveBeenCalled();
   });
 
+  it('covers fallback else block when previous sibling is TABLE', () => {
+    const mockPrevTableNode = {
+      type: { name: 'table' },
+      nodeSize: 4,
+      attrs: {},
+    };
+
+    const mockParentNode = {
+      child: jest.fn().mockImplementation((i) => {
+        if (i === 1) return mockPrevTableNode;
+        return null;
+      }),
+    };
+
+    const mockResolvedPos = {
+      index: jest.fn().mockReturnValue(2),
+      node: jest.fn().mockReturnValue(mockParentNode),
+    };
+
+    const mockSelection = {
+      $from: {
+        depth: 1,
+        before: jest.fn().mockReturnValue(10),
+      },
+    };
+
+    const mockState = {
+      doc: {
+        nodeAt: jest.fn().mockReturnValue(null),
+        resolve: jest.fn().mockReturnValue(mockResolvedPos),
+      },
+      selection: mockSelection,
+      tr: {
+        setNodeMarkup: jest.fn().mockReturnThis(),
+      },
+    };
+
+    const mockEditorView = {
+      state: mockState,
+      dom: { dispatchEvent: jest.fn() },
+      dispatch: jest.fn(),
+    };
+    const capcocontextmenuprops = {
+      capcoKey: 'capco',
+      selectedCapco: 'selctedcapco',
+      editorView: mockEditorView as unknown as EditorView,
+      position: { x: 1, y: 2 },
+      pos: 2,
+      showSubMenu: true,
+      showCapcoModeSubMenu: true,
+      showDotOnCapcoMode: true,
+      isCitation: false,
+      customCapcoListItems: [],
+      close: () => {
+        return 1;
+      },
+    };
+    const instance = new CapcoContextMenu(capcocontextmenuprops);
+    instance.setCapco('CAPCO_TEST');
+
+    expect(mockResolvedPos.index).toHaveBeenCalled();
+    expect(mockParentNode.child).toHaveBeenCalledWith(1);
+    expect(mockEditorView.dispatch).toHaveBeenCalled();
+  });
+
+  it('covers else branch when previous node is TABLE and indexBefore > 0', () => {
+    const mockPrevNode = {
+      type: { name: 'table' },
+      nodeSize: 5,
+      attrs: {},
+    };
+
+    const mockDocNode = {
+      child: jest.fn().mockReturnValue(mockPrevNode),
+    };
+
+    const mockResolvedPos = {
+      index: jest.fn().mockReturnValue(2),
+      node: jest.fn().mockReturnValue(mockDocNode),
+    };
+
+    const mockSelection = {
+      $from: {
+        depth: 1,
+        before: jest.fn().mockReturnValue(10),
+      },
+    };
+
+    const mockState = {
+      doc: {
+        nodeAt: jest.fn().mockReturnValue(null),
+        resolve: jest.fn().mockReturnValue(mockResolvedPos),
+      },
+      selection: mockSelection,
+      tr: {
+        setNodeMarkup: jest.fn().mockReturnThis(),
+      },
+    };
+
+    const mockEditorView = {
+      state: mockState,
+      dom: { dispatchEvent: jest.fn() },
+      dispatch: jest.fn(),
+    };
+
+    const capcocontextmenuprops = {
+      capcoKey: 'capco',
+      selectedCapco: 'selctedcapco',
+      editorView: mockEditorView as unknown as EditorView,
+      position: { x: 1, y: 2 },
+      pos: 2,
+      showSubMenu: true,
+      showCapcoModeSubMenu: true,
+      showDotOnCapcoMode: true,
+      isCitation: false,
+      customCapcoListItems: [],
+      close: () => {
+        return 1;
+      },
+    };
+
+    const instance = new CapcoContextMenu(capcocontextmenuprops);
+
+    instance.setCapco('TEST-CAPCO');
+
+    expect(mockResolvedPos.index).toHaveBeenCalled();
+    expect(mockDocNode.child).toHaveBeenCalledWith(1);
+    expect(mockEditorView.dispatch).toHaveBeenCalled();
+  });
+
   it('should handle onKeyDownCmenuclicked', () => {
     const capcocontextmenuprops = {
       capcoKey: 'capco',
@@ -1177,6 +1343,12 @@ describe('Capco Builder Component', () => {
       },
     };
     const capcoContextMenu = new CapcoContextMenu(capcocontextmenuprops);
+    expect(
+      capcoContextMenu.onKeyDownCmenuclicked(
+        { key: '' } as React.KeyboardEvent<unknown>,
+        { name: 'name' }
+      )
+    ).toBeUndefined();
     expect(
       capcoContextMenu.onKeyDownCmenuclicked(
         { key: 'Enter' } as React.KeyboardEvent<unknown>,
@@ -1223,6 +1395,10 @@ describe('Capco Builder Component', () => {
     };
     const capcoContextMenu = new CapcoContextMenu(capcocontextmenuprops);
     const spy = jest.spyOn(capcoContextMenu, 'wrapItemWithCapco');
+    capcoContextMenu.onKeyDownwrapItemWithCapco(
+      { key: '' } as React.KeyboardEvent,
+      { displayName: '{"ism": {"classification": "U"}}' }
+    );
     capcoContextMenu.onKeyDownwrapItemWithCapco(
       { key: 'Enter' } as React.KeyboardEvent,
       { displayName: '{"ism": {"classification": "U"}}' }

@@ -5,17 +5,19 @@
  * @jest-environment jsdom
  */
 
-import {CapcoView} from './capcoView';
-import {CapcoPlugin} from './index';
-import {EditorState} from 'prosemirror-state';
-import {EditorView} from 'prosemirror-view';
-import {Node, Schema} from 'prosemirror-model';
-import {builders} from 'prosemirror-test-builder';
+import { CapcoView } from './capcoView';
+import { CapcoPlugin } from './index';
+import { EditorState } from 'prosemirror-state';
+import { EditorView } from 'prosemirror-view';
+import { Node, Schema } from 'prosemirror-model';
+import { builders } from 'prosemirror-test-builder';
+import { effectiveSchema, CAPCOMODE } from './editorSchema';
+import { CAPCOMODEKEY } from './constants'
 
 describe('Glossary Plugin Extended', () => {
   const mySchema = new Schema({
     nodes: {
-      doc: {content: 'block+'},
+      doc: { content: 'block+' },
 
       text: {
         group: 'inline',
@@ -24,7 +26,7 @@ describe('Glossary Plugin Extended', () => {
       paragraph: {
         group: 'block',
         content: 'inline*',
-        parseDOM: [{tag: 'p'}],
+        parseDOM: [{ tag: 'p' }],
         toDOM() {
           return ['p', 0];
         },
@@ -33,12 +35,12 @@ describe('Glossary Plugin Extended', () => {
       heading: {
         group: 'block',
         content: 'inline*',
-        attrs: {level: {default: 1}},
+        attrs: { level: { default: 1 } },
         defining: true,
         parseDOM: [
-          {tag: 'h1', attrs: {level: 1}},
-          {tag: 'h2', attrs: {level: 2}},
-          {tag: 'h3', attrs: {level: 3}},
+          { tag: 'h1', attrs: { level: 1 } },
+          { tag: 'h2', attrs: { level: 2 } },
+          { tag: 'h3', attrs: { level: 3 } },
         ],
         toDOM(node) {
           return ['h' + node.attrs.level, 0];
@@ -50,7 +52,7 @@ describe('Glossary Plugin Extended', () => {
         content: 'table_row+',
         tableRole: 'table',
         isolating: true,
-        parseDOM: [{tag: 'table'}],
+        parseDOM: [{ tag: 'table' }],
         toDOM() {
           return ['table', ['tbody', 0]];
         },
@@ -59,7 +61,7 @@ describe('Glossary Plugin Extended', () => {
       table_row: {
         content: 'table_cell+',
         tableRole: 'row',
-        parseDOM: [{tag: 'tr'}],
+        parseDOM: [{ tag: 'tr' }],
         toDOM() {
           return ['tr', 0];
         },
@@ -68,13 +70,13 @@ describe('Glossary Plugin Extended', () => {
       table_cell: {
         content: 'block+',
         attrs: {
-          colspan: {default: 1},
-          rowspan: {default: 1},
-          colwidth: {default: null},
+          colspan: { default: 1 },
+          rowspan: { default: 1 },
+          colwidth: { default: null },
         },
         tableRole: 'cell',
         isolating: true,
-        parseDOM: [{tag: 'td'}],
+        parseDOM: [{ tag: 'td' }],
         toDOM() {
           return ['td', 0];
         },
@@ -85,7 +87,7 @@ describe('Glossary Plugin Extended', () => {
         atom: true,
         selectable: true,
         attrs: {
-          isValidate: {default: false},
+          isValidate: { default: false },
         },
         parseDOM: [
           {
@@ -100,7 +102,7 @@ describe('Glossary Plugin Extended', () => {
         toDOM(node) {
           return [
             'enhanced-table-figure',
-            {'data-validate': node.attrs.isValidate},
+            { 'data-validate': node.attrs.isValidate },
           ];
         },
       },
@@ -117,7 +119,7 @@ describe('Glossary Plugin Extended', () => {
   });
   const effSchema = plugin.getEffectiveSchema(mySchema);
 
-  const {doc, p} = builders(mySchema, {p: {nodeType: 'paragraph'}});
+  const { doc, p } = builders(mySchema, { p: { nodeType: 'paragraph' } });
   let gView: CapcoView;
   beforeEach(() => {
     const state = EditorState.create({
@@ -128,7 +130,7 @@ describe('Glossary Plugin Extended', () => {
     const dom = document.createElement('div');
     document.body.appendChild(dom);
     const view = new EditorView(
-      {mount: dom},
+      { mount: dom },
       {
         state: state,
       }
@@ -156,7 +158,7 @@ describe('Glossary Plugin Extended', () => {
     const dom = document.createElement('div');
     document.body.appendChild(dom);
     const view = new EditorView(
-      {mount: dom},
+      { mount: dom },
       {
         state: state,
       }
@@ -179,7 +181,7 @@ describe('Glossary Plugin Extended', () => {
     const dom = document.createElement('div');
     document.body.appendChild(dom);
     const view = new EditorView(
-      {mount: dom},
+      { mount: dom },
       {
         state: state,
       }
@@ -191,5 +193,29 @@ describe('Glossary Plugin Extended', () => {
 
   it('stopEvent should return false', () => {
     expect(gView.stopEvent(null as unknown as Event)).toBe(false);
+  });
+
+  it('adds CAPCOMODEKEY to doc node attrs', () => {
+    const schema = new Schema({
+      nodes: {
+        doc: {
+          content: 'paragraph+', attrs: {
+            capcoMode: { default: CAPCOMODE.FORCED },
+          },
+        },
+        paragraph: { group: 'block', content: 'text*' },
+        text: {},
+      },
+    });
+    effectiveSchema(schema, null);
+    effectiveSchema(schema, CAPCOMODE.FORCED);
+    expect(schema.nodes.doc.spec.attrs[CAPCOMODEKEY].default)
+      .toBe(CAPCOMODE.FORCED);
+  });
+
+  it('does not mutate schema when spec is missing', () => {
+    const schemaWithoutSpec = {} as Schema;
+    effectiveSchema(schemaWithoutSpec, CAPCOMODE.NONE);
+    expect((schemaWithoutSpec).nodes).toBeUndefined();
   });
 });
