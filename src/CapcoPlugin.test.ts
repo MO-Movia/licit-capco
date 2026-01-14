@@ -1879,21 +1879,16 @@ describe('setCapcoContent color mapping branch', () => {
 });
 
 describe('getPosition', () => {
-  let mockView: EditorView;
   let mockDom: HTMLElement;
   const plugin = new CapcoPlugin();
   beforeEach(() => {
     mockDom = document.createElement('div');
     if (!document.body) {
-      (document as any).body = document.createElement('body');
+      (document).body = document.createElement('body');
     }
 
-    if (!document.documentElement) {
-      (document as any).documentElement = document.createElement('html');
-    }
-
-    (window as any).innerWidth = 1024;
-    (window as any).innerHeight = 768;
+    (window).innerWidth = 1024;
+    (window).innerHeight = 768;
 
     // Mock bounding rect
     jest.spyOn(mockDom, 'getBoundingClientRect').mockReturnValue({
@@ -1908,9 +1903,6 @@ describe('getPosition', () => {
       toJSON: () => { },
     });
 
-    mockView = {
-      dom: mockDom,
-    } as unknown as EditorView;
     Object.defineProperty(window, 'innerWidth', {
       writable: true,
       configurable: true,
