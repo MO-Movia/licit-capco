@@ -9,7 +9,6 @@ export type CapcoEle = {
   appendHr?: boolean;
   isCustomCAPCO?: boolean;
   displayName?: string;
-  isCAPCOMode?: boolean;
   action?: fnCB;
   value?: unknown;
   removeAction?: fnCB;

@@ -224,7 +224,7 @@ export class CapcoContextMenu extends React.Component<
       ...node?.attrs,
       [CAPCOKEY]: capco,
       [METADATAKEY]: {
-        ...(node?.attrs?.[METADATAKEY] ?? {}),
+        ...(node?.attrs?.[METADATAKEY]),
         capco: safeCapcoParse(capco)?.ism,
       },
       ['isValidate']: false,
@@ -236,15 +236,15 @@ export class CapcoContextMenu extends React.Component<
     this.props.editorView.dom?.dispatchEvent(event);
     const ParentNodeType = this.props.editorView.state.doc.nodeAt(pos);
     if (ParentNodeType?.type?.name === 'image') {
-      newAttrs = {
-        ...ParentNodeType.attrs,
-        [CAPCOKEY]: capco,
-        [METADATAKEY]: {
-          ...(ParentNodeType.attrs?.[METADATAKEY] ?? {}),
-          capco: safeCapcoParse(capco)?.ism,
-        },
-        ['isValidate']: false,
-      };
+    newAttrs = {
+      ...ParentNodeType.attrs,
+      [CAPCOKEY]: capco,
+      [METADATAKEY]: {
+        ...(ParentNodeType.attrs?.[METADATAKEY]),
+        capco: safeCapcoParse(capco)?.ism,
+      },
+      isValidate: false,
+    };
     }
     const tr = this.props.editorView.state.tr.setNodeMarkup(
       pos,

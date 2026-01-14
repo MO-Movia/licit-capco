@@ -53,8 +53,11 @@ export function getCursorPosition(e: Event): number | undefined {
 
 export function safeCapcoParse(
   capco: unknown,
-  fallback: CapcoState = { ism: undefined, portionMarking: 'error' }
+  fallback?: CapcoState
 ): CapcoState {
+  const resolvedFallback: CapcoState =
+    fallback ?? { ism: undefined, portionMarking: 'error' };
+
   if (typeof capco === 'string') {
     try {
       return JSON.parse(capco) as CapcoState;
@@ -67,8 +70,9 @@ export function safeCapcoParse(
     return capco as CapcoState;
   }
 
-  return fallback;
+  return resolvedFallback;
 }
+
 
 export function getCapcoString(capco: unknown, fallback = 'error'): string {
   return safeCapcoParse(capco, { ism: null, portionMarking: fallback })

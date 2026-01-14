@@ -13,7 +13,6 @@ import {
 import type { getAttrsExFn, toDOMExFn } from './capcoNodeSpec';
 import {
   CAPCOKEY,
-  CAPCOMODEKEY,
   PARAGRAPH,
   HEADING,
   TABLE,
@@ -41,34 +40,39 @@ export type Content = {
   toDOM: toDOMExFn;
 };
 
-export function effectiveSchema(schema: Schema, mode: CAPCOMODE): Schema {
+export function effectiveSchema(schema: Schema): Schema {
   if (schema?.spec) {
     createCapcoNodeAttributes(schema);
-    createCapcoDocAttributes(schema, mode);
   }
-
   return schema;
 }
 
-function createAttribute(content: NodeSpec, newAttrs: string[], value: string | number | null) {
+function createAttribute(
+  content: NodeSpec,
+  newAttrs: string[],
+  value: string | number | null
+) {
+  if (!content?.attrs) return;
+
   const requiredAttrs = [...newAttrs];
-  const attr = content?.attrs && Object.keys(content.attrs)[0];
-  requiredAttrs.forEach((key) => {
-    if (content) {
-      let capcoAttrSpec = content.attrs?.[key];
-      if (attr && content.attrs && !capcoAttrSpec) {
-        const contentAttr = content.attrs[attr];
-        capcoAttrSpec = Object.assign(
-          Object.create(Object.getPrototypeOf(contentAttr)),
-          contentAttr
-        );
-        if (capcoAttrSpec) {
-          capcoAttrSpec.default = value;
-          content.attrs[key] = capcoAttrSpec;
-        }
-      }
-    }
-  });
+  const baseAttrKey = Object.keys(content.attrs)[0];
+
+  if (!baseAttrKey) return;
+
+  for (const key of requiredAttrs) {
+    if (content.attrs[key]) continue;
+
+    const baseAttrSpec = content.attrs[baseAttrKey];
+    if (!baseAttrSpec) continue;
+
+    const clonedAttrSpec = Object.assign(
+      Object.create(Object.getPrototypeOf(baseAttrSpec)),
+      baseAttrSpec
+    );
+
+    clonedAttrSpec.default = value;
+    content.attrs[key] = clonedAttrSpec;
+  }
 }
 
 function getContent(
@@ -103,14 +107,31 @@ function getContent(
   return content;
 }
 
-function createCapcoNodeAttributes(schema) {
-  // Paragraph Capco attribute
-  const paragraphContent = getContent(PARAGRAPH, schema, getParagraphNodeAttrs, toParagraphDOM);
-  const tableContent = getContent(TABLE, schema, getParagraphNodeAttrs, toParagraphDOM);
-  const tableFigureContent = getContent(TABLE_FIGURE, schema, getParagraphNodeAttrs, toParagraphDOM);
-  // [FS-AG][21-APR-2020][IRAD-939]
-  // Heading CAPCO attribute.
-  const headingContent = getContent(HEADING, schema, getParagraphNodeAttrs, toHeadingDOM);
+function createCapcoNodeAttributes(schema: Schema) {
+  const paragraphContent = getContent(
+    PARAGRAPH,
+    schema,
+    getParagraphNodeAttrs,
+    toParagraphDOM
+  );
+  const tableContent = getContent(
+    TABLE,
+    schema,
+    getParagraphNodeAttrs,
+    toParagraphDOM
+  );
+  const tableFigureContent = getContent(
+    TABLE_FIGURE,
+    schema,
+    getParagraphNodeAttrs,
+    toParagraphDOM
+  );
+  const headingContent = getContent(
+    HEADING,
+    schema,
+    getParagraphNodeAttrs,
+    toHeadingDOM
+  );
 
   const contentArr = [
     paragraphContent,
@@ -123,32 +144,13 @@ function createCapcoNodeAttributes(schema) {
     schema.nodes.image,
     schema.nodes.enhanced_table_figure,
   ];
+
   const NEWATTRS = [CAPCOKEY, 'isValidate'];
-  contentArr.forEach((content) => {
-    if (content !== undefined) {
-      createAttribute(content, NEWATTRS, null);
-    }
-  });
+
+  for (const content of contentArr) {
+    if (!content) continue;
+    createAttribute(content, NEWATTRS, null);
+  }
 }
-
-function createCapcoDocAttributes(schema: Schema, mode: CAPCOMODE) {
-  // Document content is always at top hence accessing it at 1.
-  const contentArr = [
-    (schema.spec.nodes as NodeSpec).content[1],
-    schema.nodes.doc,
-  ];
-  createCapcoModeDocAttributes(contentArr, mode);
-
-}
-
-function createCapcoModeDocAttributes(contentArr, mode: CAPCOMODE) {
-  contentArr.forEach((content) => {
-    if (content !== undefined) {
-      createAttribute(content, [CAPCOMODEKEY], mode || CAPCOMODE.NONE);
-    }
-  });
-}
-
-
 
 export const applyEffectiveSchema = effectiveSchema;
