@@ -20,9 +20,16 @@ describe('item',()=>{
 
         expect(item.getChild('string')).toBeUndefined();
     });
-    it('should handle checkCode',()=>{
-        const item = new Item('code','description');
+    it('should handle checkCode', () => {
+    const item = new Item('code', 'description');
+    const otherItem = new Item('SCT', 'Sensitive Compartmented Information', 2);
 
-        expect(item.checkCode(new Item('SCT', 'Sensitive Compartmented Information',2))).toBeFalsy();
+    expect(item.checkCode(otherItem, 'code')).toBeFalsy();
+    });
+    it('should return true when codes match', () => {
+    const item = new Item('SCI', 'Sensitive Compartmented Information');
+    const otherItem = new Item('SCI', 'Sensitive Compartmented Information');
+
+    expect(item.checkCode(otherItem, 'SCI')).toBeTruthy();
     });
 });

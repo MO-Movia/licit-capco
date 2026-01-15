@@ -44,8 +44,8 @@ export class Item {
     return getAnItem(code, this.children, this.checkCode);
   }
 
-  checkCode(item: Item): boolean {
-    return (this as unknown as string) === item.code;
+  checkCode(item: Item, code: string): boolean {
+    return code === item.code;
   }
 }
 
@@ -73,14 +73,8 @@ export function removeAnItem(
 export function getAnItem(
   code: string,
   array: Item[],
-  cbCheckCode: checkFn
+  cbCheckCode: (item: Item, code: string) => boolean
 ): Item | undefined {
-  let selItem: Item;
-  const index = array.findIndex(cbCheckCode, code);
-
-  if (-1 < index) {
-    selItem = array[index];
-  }
-
-  return selItem;
+  const index = array.findIndex((item) => cbCheckCode(item, code));
+  return index >= 0 ? array[index] : undefined;
 }

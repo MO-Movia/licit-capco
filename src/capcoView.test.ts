@@ -12,7 +12,6 @@ import { EditorView } from 'prosemirror-view';
 import { Node, Schema } from 'prosemirror-model';
 import { builders } from 'prosemirror-test-builder';
 import { effectiveSchema, CAPCOMODE } from './editorSchema';
-import { CAPCOMODEKEY } from './constants'
 
 describe('Glossary Plugin Extended', () => {
   const mySchema = new Schema({
@@ -199,7 +198,8 @@ describe('Glossary Plugin Extended', () => {
     const schema = new Schema({
       nodes: {
         doc: {
-          content: 'paragraph+', attrs: {
+          content: 'paragraph+',
+          attrs: {
             capcoMode: { default: CAPCOMODE.FORCED },
           },
         },
@@ -207,15 +207,15 @@ describe('Glossary Plugin Extended', () => {
         text: {},
       },
     });
-    effectiveSchema(schema, null);
-    effectiveSchema(schema, CAPCOMODE.FORCED);
-    expect(schema.nodes.doc.spec.attrs[CAPCOMODEKEY].default)
-      .toBe(CAPCOMODE.FORCED);
+
+    const eff = effectiveSchema(schema);
+
+    expect(eff.nodes.doc.spec.attrs?.capcoMode).toBeDefined();
   });
 
   it('does not mutate schema when spec is missing', () => {
     const schemaWithoutSpec = {} as Schema;
-    effectiveSchema(schemaWithoutSpec, CAPCOMODE.NONE);
+    effectiveSchema(schemaWithoutSpec);
     expect((schemaWithoutSpec).nodes).toBeUndefined();
   });
 });

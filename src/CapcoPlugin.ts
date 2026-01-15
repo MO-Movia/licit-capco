@@ -15,8 +15,6 @@ import { EditorState, Plugin, Transaction } from 'prosemirror-state';
 import { CAPCOMODE, effectiveSchema, SYSTEMCAPCO } from './editorSchema';
 import {
   CAPCOKEY,
-  CAPCOMODEKEY,
-  CAPCOMODESTEPKEY,
   CAPCO_PLUGIN_KEY,
   PARAGRAPH,
   TABLE,
@@ -26,7 +24,6 @@ import {
 import { Decoration, DecorationSet, EditorView } from 'prosemirror-view';
 import { CapcoContextMenu } from './capcoContextMenu';
 import { findParentNodeOfTypeClosestToPos } from 'prosemirror-utils';
-import { SetDocAttrStep } from '@modusoperandi/licit-doc-attrs-step';
 import {
   createPopUp,
   atViewportCenter,
@@ -227,18 +224,6 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
       : tr;
   }
 
-  processCapcoMode(trx: Transaction, state: EditorState): Transaction {
-    if (undefined !== this.mode &&  undefined !== state.doc.attrs[CAPCOMODEKEY] && state.doc.attrs[CAPCOMODEKEY] != this.mode) {
-      const docAttrStep = new SetDocAttrStep(
-        CAPCOMODESTEPKEY,
-        this.mode,
-        'SetDocAttr'
-      );
-      trx = trx.step(docAttrStep);
-    }
-    return trx;
-  }
-
   processEnterPendingTransactions(
     selTrx: Transaction,
     doc: Node,
@@ -246,22 +231,25 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
     schema: Schema
   ): Transaction {
     const evt = selTrx.getMeta('uiEvent');
-    const drop = 'drop' === evt;
+    const drop = evt === 'drop';
     const len = this.pendingItems.length;
-    let i = 0;
-    this.pendingItems.forEach((element) => {
+
+    for (const [i, element] of this.pendingItems.entries()) {
       let pos = selTrx.mapping.map(element.pos);
-      if (!drop || (drop && 1 < len && 0 != i)) {
+
+      if (!drop || (drop && len > 1 && i !== 0)) {
         pos = this.getPendingItemPos(pos, i, drop, len, doc, element, schema);
       }
+
       const currentNode = trx.doc.nodeAt(pos);
-      if (currentNode) {
-        const newAttrs = { ...currentNode?.attrs };
-        newAttrs.capco = element.attrs.capco;
-        trx = trx.setNodeMarkup(pos, undefined, newAttrs);
-      }
-      i++;
-    });
+      if (!currentNode) continue;
+
+      trx = trx.setNodeMarkup(pos, undefined, {
+        ...currentNode.attrs,
+        capco: element.attrs.capco,
+      });
+    }
+
     return trx;
   }
 
@@ -308,7 +296,6 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
       trx,
       newState.schema
     );
-    trx = this.processCapcoMode(trx, newState);
     this.pendingItems = [];
     return trx;
   }
@@ -394,8 +381,7 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
     // Default CAPCO value based on CAPCO mode
     let capco: string = SYSTEMCAPCO.TBD;
     if (
-      Number.parseInt(view.state.doc.attrs[CAPCOMODEKEY]) ===
-      CAPCOMODE.FORCED.valueOf()
+      this.mode === CAPCOMODE.FORCED
     ) {
       capco = node.attrs.capco;
     }
@@ -657,11 +643,9 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
     };
   }
 
-  getCapcoFromSlice(view: EditorView, slice: Slice): string | null {
+  getCapcoFromSlice(slice: Slice): string | null {
     let capco: string | null = null;
-    if (
-      CAPCOMODE.NONE.valueOf() !==
-        Number.parseInt(view.state.doc.attrs[CAPCOMODEKEY]) &&
+      if (this.mode !== CAPCOMODE.NONE &&
       slice.content?.childCount !== 0
     ) {
       // Copy full paragraph, the pasted paragraph shall have same CAPCO.
@@ -707,7 +691,7 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
       if (source) {
         // If the first line in the paste area is already EMPTY.
         if (0 === source.content.childCount) {
-          capco = this.getCapcoFromSlice(view, slice);
+          capco = this.getCapcoFromSlice(slice);
         }
         // If pasted at the end of a line
         else if (h.pos === end) {
@@ -770,57 +754,44 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
       TBD: '#454545', // dark gray
     };
 
-    switch (Number.parseInt(state.doc.attrs[CAPCOMODEKEY])) {
-      case CAPCOMODE.FORCED.valueOf(): {
-        let capcoText = '';
-        const parentNode = state.doc.resolve(pos);
-        if ([TABLE_FIGURE_CAPCO, TABLE_FIGURE].includes(nodeType)) {
-          capco = state.doc.nodeAt(getBlockControlCapco(state, pos))?.attrs
-            ?.capco;
-          const isFigureBlock = parentNode.parent.type.name === TABLE_FIGURE && parentNode.parent.attrs.figureType === 'figure';
-          capcoText = getCapcoString(capco, this.defaultCapco);
-          capcoText = this.enhancedTableFigureCapco(capcoText, isFigureBlock);
-          capcoMark.textContent = capcoText;
-          capcoMark.style.color = '#6A5ACD';
-        } else {
-          capcoText = getCapcoString(capco, this.defaultCapco);
-          capcoMark.textContent = '(' + capcoText + ') ';
-        }
-        const colorKey = capcoText?.replace(/[()]/g, '').trim().toUpperCase();
-        if (parentNode.parent.type.name === TABLE_FIGURE && capcoColors[colorKey]) {
-          capcoMark.style.color = capcoColors[colorKey];
-          capcoMark.style.textTransform = 'uppercase';
-        }
-        break;
-      }
-      case CAPCOMODE.NONE.valueOf():
-      default:
-        break;
+  if (this.mode === CAPCOMODE.FORCED) {
+    let capcoText = '';
+    const parentNode = state.doc.resolve(pos);
+
+    if ([TABLE_FIGURE_CAPCO, TABLE_FIGURE].includes(nodeType)) {
+      capco = state.doc.nodeAt(getBlockControlCapco(state, pos))?.attrs?.capco;
+      const isFigureBlock =
+        parentNode.parent.type.name === TABLE_FIGURE &&
+        parentNode.parent.attrs.figureType === 'figure';
+
+      capcoText = getCapcoString(capco, this.defaultCapco);
+      capcoText = this.enhancedTableFigureCapco(capcoText, isFigureBlock);
+      capcoMark.textContent = capcoText;
+      capcoMark.style.color = '#6A5ACD';
+    } else {
+      capcoText = getCapcoString(capco, this.defaultCapco);
+      capcoMark.textContent = `(${capcoText}) `;
+    }
+
+    const colorKey = capcoText.toUpperCase();
+    if (
+      parentNode.parent.type.name === TABLE_FIGURE &&
+      capcoColors[colorKey]
+    ) {
+      capcoMark.style.color = capcoColors[colorKey];
+      capcoMark.style.textTransform = 'uppercase';
     }
   }
+  }
 
-  showHideCapco(state: EditorState, textContent: string): string {
-    let value = '';
-    if ('' === textContent.trim()) {
-      value = NONE;
-    } else {
-      switch (Number.parseInt(state.doc.attrs[CAPCOMODEKEY])) {
-        case CAPCOMODE.NONE.valueOf():
-          value = NONE;
-          break;
-
-        case CAPCOMODE.FORCED.valueOf():
-        default:
-          break;
-      }
-    }
-
-    return value;
+  showHideCapco(_state: EditorState, textContent: string): string {
+    if (!textContent.trim()) return NONE;
+    return this.mode === CAPCOMODE.FORCED ? '' : NONE;
   }
 
   // Plugin method that supplies plugin schema to editor
   getEffectiveSchema(schema: Schema): Schema {
-    return effectiveSchema(schema, this.mode);
+    return effectiveSchema(schema);
   }
 }
 

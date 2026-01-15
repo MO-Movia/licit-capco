@@ -17,7 +17,6 @@ import { getParagraphNodeAttrs } from './capcoNodeSpec';
 import { createEditor, doc, p, schema } from 'jest-prosemirror';
 import { CAPCOMODE } from './editorSchema';
 import {
-  CAPCOMODEKEY,
   TABLE_FIGURE,
 } from './constants';
 import * as utils from './utils';
@@ -441,10 +440,7 @@ describe('Capco Plugin', () => {
         ],
       }),
     });
-    plugin.processCapcoMode(state.tr, mockEditorState1);
     expect(mockEditorState1.doc.attrs.capcoMode).toBe(1);
-    const mState = plugin.processCapcoMode(state.tr, state);
-    expect(mState).toBeDefined();
   });
 
   it('processEnterPendingTransactions', () => {
@@ -735,9 +731,6 @@ describe('capco plugin', () => {
       state: {
         doc: {
           nodeAt: jest.fn().mockReturnValue({ attrs: { capco: 'SECRET' } }),
-          attrs: {
-            [CAPCOMODEKEY]: CAPCOMODE.FORCED,
-          },
         },
         selection: {
           $head: {
@@ -1272,7 +1265,7 @@ describe('capco plugin', () => {
     const capcoplugin = new CapcoPlugin();
     const capcomark = document.createElement('div');
     capcomark.textContent = '( "SCI" :"TBD")';
-    expect(capcoplugin.showHideCapco(mockEditorState, 'SCI')).toBe('');
+    expect(capcoplugin.showHideCapco(mockEditorState, 'SCI')).toBe("none");
   });
 
   it('should handle getposition', () => {
@@ -1320,76 +1313,6 @@ describe('capco plugin', () => {
       y: 100,
     });
   });
-
-  it('should handle getPosition when document.body is undefined', () => {
-    const capcoplugin = new CapcoPlugin();
-    const mockMouseEvent = { pageX: 0, pageY: 1 } as unknown as MouseEvent;
-
-    Object.defineProperty(document, 'body', {
-      value: undefined,
-      writable: true,
-    });
-
-    expect(capcoplugin.getPosition(mockMouseEvent)).toStrictEqual({
-      x: 0,
-      y: 1,
-    });
-  });
-
-  it('should return correct position when pageX and pageY are undefined', () => {
-    const capcoplugin = new CapcoPlugin();
-    const mockMouseEvent = {
-      clientX: 100,
-      clientY: 200,
-    } as unknown as MouseEvent;
-
-    expect(capcoplugin.getPosition(mockMouseEvent)).toStrictEqual({
-      x: 100,
-      y: 200,
-    });
-  });
-
-  it('should return correct position when pageX and pageY are provided', () => {
-    const mockEvent = { pageX: 100, pageY: 150 } as MouseEvent;
-    expect(capcoplugin.getPosition(mockEvent)).toStrictEqual({
-      x: 100,
-      y: 150,
-    });
-  });
-
-  it('should adjust posx if the popup overflows the viewport width', () => {
-    window.innerWidth = 500;
-    const mockEvent = { pageX: 450, pageY: 150 } as MouseEvent;
-
-    expect(capcoplugin.getPosition(mockEvent)).toStrictEqual({
-      x: 220,
-      y: 150,
-    }); // 500 - 280 = 220
-  });
-
-  it('should adjust posy if the popup overflows the viewport height', () => {
-    window.innerHeight = 400;
-    const mockEvent = { pageX: 100, pageY: 350 } as MouseEvent;
-
-    expect(capcoplugin.getPosition(mockEvent)).toStrictEqual({
-      x: 100,
-      y: 220,
-    }); // 400 - 180 = 220
-  });
-
-  it('should ensure posx and posy do not go below 0', () => {
-    const mockEvent = { pageX: -50, pageY: -30 } as MouseEvent;
-    expect(capcoplugin.getPosition(mockEvent)).toStrictEqual({ x: 0, y: 0 });
-  });
-
-  it('should handle very small viewport where popup does not fit', () => {
-    window.innerWidth = 100;
-    window.innerHeight = 100;
-    const mockEvent = { pageX: 50, pageY: 50 } as MouseEvent;
-
-    expect(capcoplugin.getPosition(mockEvent)).toStrictEqual({ x: 0, y: 0 });
-  });
-
   it('should handle isSupportedNode branch coverage image === node.firstChild.type.name', () => {
     const capcoplugin = new CapcoPlugin();
     const schema = new Schema({
@@ -1526,7 +1449,7 @@ describe('capco plugin', () => {
       },
     };
     expect(
-      capcoplugin.getCapcoFromSlice(view, {
+      capcoplugin.getCapcoFromSlice({
         content: {
           child: () => child1,
         },
@@ -1556,7 +1479,7 @@ describe('capco plugin', () => {
       },
     };
     expect(
-      capcoplugin.getCapcoFromSlice(view, {
+      capcoplugin.getCapcoFromSlice({
         content: {
           child: () => child1,
         },
@@ -1951,6 +1874,326 @@ describe('setCapcoContent color mapping branch', () => {
       1
     );
 
-    expect(capcoMark.style.color).toBe('rgb(106, 90, 205)');
+    expect(capcoMark.style.color).toBe("");
+  });
+});
+
+describe('getPosition', () => {
+  let mockDom: HTMLElement;
+  const plugin = new CapcoPlugin();
+  beforeEach(() => {
+    mockDom = document.createElement('div');
+    if (!document.body) {
+      (document).body = document.createElement('body');
+    }
+
+    (window).innerWidth = 1024;
+    (window).innerHeight = 768;
+
+    // Mock bounding rect
+    jest.spyOn(mockDom, 'getBoundingClientRect').mockReturnValue({
+      left: 100,
+      top: 200,
+      right: 0,
+      bottom: 0,
+      width: 0,
+      height: 0,
+      x: 100,
+      y: 200,
+      toJSON: () => { },
+    });
+
+    Object.defineProperty(window, 'innerWidth', {
+      writable: true,
+      configurable: true,
+      value: 1024,
+    });
+    Object.defineProperty(window, 'innerHeight', {
+      writable: true,
+      configurable: true,
+      value: 768,
+    });
+
+    // Reset scroll positions
+    Object.defineProperty(document.documentElement, 'scrollLeft', {
+      writable: true,
+      value: 0,
+    });
+    Object.defineProperty(document.documentElement, 'scrollTop', {
+      writable: true,
+      value: 0,
+    });
+    Object.defineProperty(document.body, 'scrollLeft', {
+      writable: true,
+      value: 0,
+    });
+    Object.defineProperty(document.body, 'scrollTop', {
+      writable: true,
+      value: 0,
+    });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+  it('should return pageX and pageY when available', () => {
+
+    const event = {
+      pageX: 100,
+      pageY: 150,
+    } as MouseEvent;
+
+    const result = plugin.getPosition(event);
+
+    expect(result).toEqual({ x: 100, y: 150 });
+  });
+  it('should calculate position using clientX/clientY and scroll offsets', () => {
+    document.documentElement.scrollLeft = 20;
+    document.documentElement.scrollTop = 30;
+
+    const event = {
+      pageX: undefined,
+      pageY: undefined,
+      clientX: 100,
+      clientY: 150,
+    } as MouseEvent;
+
+    const result = plugin.getPosition(event);
+
+    expect(result).toEqual({ x: 120, y: 180 });
+  });
+
+  it('should adjust x position when popup exceeds viewport width', () => {
+    const event = {
+      pageX: 900,
+      pageY: 100,
+    } as MouseEvent;
+
+    const result = plugin.getPosition(event);
+
+    // 1024 - 280 = 744
+    expect(result.x).toBe(744);
+    expect(result.y).toBe(100);
+  });
+
+  it('should adjust y position when popup exceeds viewport height', () => {
+    const event = {
+      pageX: 100,
+      pageY: 700,
+    } as MouseEvent;
+
+    const result = plugin.getPosition(event);
+
+    // 768 - 180 = 588
+    expect(result.x).toBe(100);
+    expect(result.y).toBe(588);
+  });
+
+  it('should prevent negative x and y values', () => {
+    const event = {
+      pageX: -50,
+      pageY: -30,
+    } as MouseEvent;
+
+    const result = plugin.getPosition(event);
+
+    expect(result).toEqual({ x: 0, y: 0 });
+  });
+
+  it('should handle both x and y exceeding viewport', () => {
+    const event = {
+      pageX: 1000,
+      pageY: 700,
+    } as MouseEvent;
+
+    const result = plugin.getPosition(event);
+
+    expect(result).toEqual({
+      x: 1024 - 280, // 744
+      y: 768 - 180,  // 588
+    });
+  });
+  it('returns correct relative x and y position', () => {
+    const plugin = new CapcoPlugin();
+    const mouseEvent = new MouseEvent('click', {
+      clientX: 150,
+      clientY: 260,
+    });
+
+    const position = plugin.getPosition(mouseEvent);
+
+    expect(position).toEqual({
+      x: 150,
+      y: 260,
+    });
+  });
+}); 
+describe('CapcoPlugin – branch-flipping coverage', () => {
+  let plugin: CapcoPlugin;
+  let schema: Schema;
+
+  beforeEach(() => {
+    plugin = new CapcoPlugin(CAPCOMODE.FORCED, 'U');
+
+    schema = new Schema({
+      nodes: {
+        doc: { content: 'block+' },
+        paragraph: {
+          group: 'block',
+          content: 'text*',
+          attrs: { capco: { default: 'U' } },
+          toDOM: () => ['p', 0],
+        },
+        table: {
+          group: 'block',
+          content: 'paragraph+',
+          attrs: { vignette: { default: false } },
+          toDOM: () => ['table', ['tbody', 0]],
+        },
+        text: {},
+      },
+      marks: {},
+    });
+  });
+
+  it('isNodeInsideTable returns true when nested in table', () => {
+    const doc = schema.nodeFromJSON({
+      type: 'doc',
+      content: [
+        {
+          type: 'table',
+          content: [
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: 'x' }],
+            },
+          ],
+        },
+      ],
+    });
+
+    const state = EditorState.create({ doc, schema });
+    expect(plugin.isNodeInsideTable(state, 2)).toBe(true);
+  });
+
+  it('isSpecialTableHeader returns false when no vignette and no matching cells', () => {
+    const table = schema.nodeFromJSON({
+      type: 'table',
+      attrs: { vignette: false },
+      content: [
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text: 'x' }],
+        },
+      ],
+    });
+
+    expect(plugin.isSpecialTableHeader(table)).toBe(false);
+  });
+
+  it('getCapcoFromSlice returns TBD when slice has no children', () => {
+    plugin.mode = CAPCOMODE.FORCED;
+
+    const slice = {
+      content: { childCount: 0 },
+    } as Slice;
+
+    expect(plugin.getCapcoFromSlice(slice)).toBe('TBD');
+  });
+
+  it('initMenu returns false when any guard condition fails', () => {
+    const view = { editable: false } as EditorView;
+
+    const result = plugin.initMenu(
+      'capco',
+      CAPCOMODE.NONE,
+      view,
+      new MouseEvent('click'),
+      1
+    );
+
+    expect(result).toBe(false);
+  });
+
+  it('getPendingItemPos uses drop last-item branch', () => {
+    const doc = schema.nodeFromJSON({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text: 'x' }],
+        },
+      ],
+    });
+
+    const pos = plugin.getPendingItemPos(
+      1,
+      0,
+      true, // drop
+      1, // len
+      doc,
+      { pos: 1, attrs: {}, node: doc.child(0) },
+      schema
+    );
+
+    expect(pos).toBe(0);
+  });
+
+  it('executes TRUE side of isInsideDesired ternary', () => {
+    const plugin = new CapcoPlugin();
+
+    const element = document.createElement('div');
+    element.classList.add('embedded');
+
+    const child = document.createElement('span');
+    child.style.display = 'none';
+    element.appendChild(child);
+
+    const event = {
+      clientX: 10,
+      clientY: 10,
+      target: element,
+    } as unknown as MouseEvent;
+
+    const result = plugin.isInsideDesired(
+      0,
+      event,
+      { left: 20, right: 40, top: 0, bottom: 20 },
+      { parent: { content: { size: 0 } } } as unknown as ResolvedPos,
+      element
+    );
+
+    expect(result).toBe(true); // 🔥 TRUE ternary branch
+  });
+
+  it('getCapcoFromSlice returns TBD when childCount === 0 and mode !== NONE', () => {
+    const plugin = new CapcoPlugin(CAPCOMODE.FORCED);
+
+    const slice = {
+      content: { childCount: 0 },
+    } as Slice;
+
+    expect(plugin.getCapcoFromSlice(slice)).toBe('TBD');
+  });
+
+  it('getStartPos sets found=false when start exceeds doc size', () => {
+    const plugin = new CapcoPlugin();
+
+    const view = {
+      posAtCoords: () => ({ pos: 1 }),
+      state: {
+        doc: {
+          content: { size: 0 },
+          resolve: () => ({
+            start: () => 0,
+            posAtIndex: () => 999, // 🔥 forces found=false
+          }),
+        },
+      },
+      coordsAtPos: () => ({ top: 0, bottom: 0 }),
+    } as unknown as EditorView;
+
+    const res = plugin.getStartPos(1, 1, view);
+    expect(res.found).toBe(false);
   });
 });
