@@ -5,7 +5,7 @@
  * @jest-environment jsdom
  */
 
-import { Schema, ResolvedPos, Slice } from 'prosemirror-model';
+import { Schema, ResolvedPos, Slice, Node as PMNode } from 'prosemirror-model';
 import { EditorState, Transaction, TextSelection } from 'prosemirror-state';
 import { EditorView } from 'prosemirror-view';
 import { CapcoContextMenu, capcoContextMenuProps } from './capcoContextMenu';
@@ -2197,3 +2197,165 @@ describe('CapcoPlugin – branch-flipping coverage', () => {
     expect(res.found).toBe(false);
   });
 });
+describe('CapcoPlugin additional branch coverage', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('covers getCapcoFromSlice list and non-list extraction in FORCED mode', () => {
+    const plugin = new CapcoPlugin(CAPCOMODE.FORCED);
+
+    const orderedSlice = {
+      content: {
+        childCount: 1,
+        child: () => ({
+          type: { name: 'ordered_list' },
+          content: {
+            child: () => ({
+              content: {
+                child: () => ({
+                  attrs: { capco: 'S' },
+                }),
+              },
+            }),
+          },
+        }),
+      },
+    } as unknown as Slice;
+
+    const paragraphSlice = {
+      content: {
+        childCount: 1,
+        child: () => ({
+          type: { name: 'paragraph' },
+          attrs: { capco: 'U' },
+        }),
+      },
+    } as unknown as Slice;
+
+    expect(plugin.getCapcoFromSlice(orderedSlice)).toBe('S');
+    expect(plugin.getCapcoFromSlice(paragraphSlice)).toBe('U');
+  });
+
+  it('covers processEnterPendingTransactions branch when nodeAt returns null during drop', () => {
+    const plugin = new CapcoPlugin(CAPCOMODE.FORCED);
+
+    plugin.pendingItems = [
+      { pos: 1, attrs: { capco: 'U' } },
+      { pos: 2, attrs: { capco: 'S' } },
+    ];
+
+    const getPendingItemPosSpy = jest
+      .spyOn(plugin, 'getPendingItemPos')
+      .mockReturnValue(99);
+
+    const selTrx = {
+      getMeta: () => 'drop',
+      mapping: { map: (pos: number) => pos },
+    } as unknown as Transaction;
+
+    const trxMock = {
+      doc: {
+        nodeAt: () => null,
+      },
+      setNodeMarkup: jest.fn(),
+    };
+    const trx = trxMock as unknown as Transaction;
+
+    const result = plugin.processEnterPendingTransactions(
+      selTrx,
+      {} as unknown as PMNode,
+      trx,
+      { nodes: { paragraph: {} } } as unknown as Schema
+    );
+
+    expect(getPendingItemPosSpy).toHaveBeenCalled();
+    expect(result).toBe(trx);
+    expect(trxMock.setNodeMarkup).not.toHaveBeenCalled();
+  });
+
+  it('covers handleSourceForCapco branch when $head is missing', () => {
+    const plugin = new CapcoPlugin();
+
+    const view = {
+      state: {
+        selection: {
+          $head: { depth: 0, before: () => 0 },
+        },
+        doc: {
+          nodeAt: () => ({ attrs: { capco: 'U' } }),
+        },
+        tr: {
+          curSelection: {
+            $head: null,
+          },
+        },
+      },
+    } as unknown as EditorView;
+
+    expect(
+      plugin.handleSourceForCapco(view, {} as unknown as Event, {} as Slice)
+    ).toBe(false);
+    expect(plugin.pendingItems).toEqual([]);
+  });
+
+  it('covers addBlockDecoratoration table and table_figure branches', () => {
+    const plugin = new CapcoPlugin(CAPCOMODE.FORCED, 'U');
+
+    const state = {
+      doc: {
+        resolve: () => ({
+          parent: {
+            type: { name: 'table_figure' },
+            attrs: { figureType: 'figure' },
+          },
+        }),
+        nodeAt: () => ({ attrs: { capco: 'SECRET' } }),
+      },
+    } as unknown as EditorState;
+
+    jest.spyOn(utils, 'getBlockControlCapco').mockReturnValue(0);
+    jest.spyOn(utils, 'getCapcoString').mockReturnValue('SECRET');
+
+    const addBlockDecoratoration = (
+      Object.getPrototypeOf(plugin) as {
+        addBlockDecoratoration: (
+          node: PMNode,
+          state: EditorState,
+          pos: number,
+          decorations: unknown[]
+        ) => void;
+      }
+    ).addBlockDecoratoration.bind(plugin);
+
+    const decorationsTable: unknown[] = [];
+    addBlockDecoratoration(
+      {
+        type: { name: 'table' },
+        attrs: { capco: 'U' },
+        nodeSize: 5,
+        textContent: 'row',
+      },
+      state,
+      1,
+      decorationsTable
+    );
+
+    const decorationsFigure: unknown[] = [];
+    addBlockDecoratoration(
+      {
+        type: { name: TABLE_FIGURE },
+        attrs: { capco: 'SECRET', isValidate: true },
+        nodeSize: 6,
+        textContent: 'caption',
+      },
+      state,
+      2,
+      decorationsFigure
+    );
+
+    expect(decorationsTable.length).toBe(1);
+    expect(decorationsFigure.length).toBe(2);
+  });
+});
+
