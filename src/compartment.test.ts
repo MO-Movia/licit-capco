@@ -22,17 +22,39 @@ describe('CapcoCompartment', () => {
     expect(c).toBeUndefined();
   });
 
-  it('getItem', () => {
+    it('getItem returns the matching item by code', () => {
+      const item = new Item('SCI', 'Sensitive Compartmented Information');
+      comp.addItem(item);
+
+      const result = comp.getItem('SCI');
+      expect(result).toBe(item);
+      expect(result?.code).toBe('SCI');
+    });
+
+    it('getItem returns undefined when code does not exist', () => {
     const item = new Item('SCI', 'Sensitive Compartmented Information');
     comp.addItem(item);
-    const c = comp.getItem('SCI');
-    expect(c).toEqual(item);
+
+    const result = comp.getItem('UNKNOWN');
+
+    expect(result).toBeUndefined();
   });
 
-  it('checkCode', () => {
+  it('should handle checkCode', () => {
     const item = new Item('SCI', 'Sensitive Compartmented Information');
-    comp.addItem(item);
-    const c = comp.checkCode(item);
-    expect(c).toBeFalsy();
+
+    expect(
+      item.checkCode(
+        new Item('SCT', 'Sensitive Compartmented Information', 2),
+        'SCI'
+      )
+    ).toBeFalsy();
+
+    expect(
+      item.checkCode(
+        new Item('SCI', 'Sensitive Compartmented Information', 2),
+        'SCI'
+      )
+    ).toBeTruthy();
   });
 });

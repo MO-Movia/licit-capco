@@ -28,7 +28,7 @@ export class Compartment {
     return getAnItem(code, this.values, this.checkCode);
   }
 
-  checkCode(value: Item): boolean {
-    return (this as unknown as string) === value.code;
+  checkCode(item: Item, code: string): boolean {
+    return item.code === code;
   }
 }
