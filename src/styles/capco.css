@@ -184,5 +184,13 @@
 }
 
 .ProseMirror .lint-iconinner::before {
-  content: "+";
+  content: '+';
+}
+
+.ProseMirror p[hangingindent='true'] .capco.ProseMirror-widget {
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
