@@ -184,5 +184,22 @@
 }
 
 .ProseMirror .lint-iconinner::before {
-  content: "+";
+  content: '+';
 }
+
+/*  Default — no prefix spans — capco is relative */
+.ProseMirror p[hangingindent="true"] capco-mark.ProseMirror-widget {
+    position: relative;
+    flex-shrink: 0;
+    white-space: nowrap;
+    overflow: visible;
+}
+ 
+/* Has prefix spans — capco is absolute */
+.ProseMirror p[hangingindent="true"]:has(span[prefix="0"]) capco-mark.ProseMirror-widget {
+    position: absolute;
+    flex-shrink: 0;
+    white-space: nowrap;
+    overflow: visible;
+}
+ 
