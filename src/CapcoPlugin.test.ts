@@ -2349,3 +2349,119 @@ describe('CapcoPlugin additional branch coverage', () => {
   });
 });
 
+describe('CapcoPlugin – measurement & custom element branch coverage', () => {
+  it('getOrCreateTempCapcoElement creates, reuses, then recreates the ruler', () => {
+    const plugin = new CapcoPlugin();
+
+    // First call creates and appends the ruler element.
+    const first = plugin.getOrCreateTempCapcoElement();
+    expect(document.body.contains(first)).toBe(true);
+
+    // Second call returns the cached element (still in the body).
+    const second = plugin.getOrCreateTempCapcoElement();
+    expect(second).toBe(first);
+
+    // Once removed from the DOM, the next call must recreate it.
+    document.body.removeChild(first);
+    const third = plugin.getOrCreateTempCapcoElement();
+    expect(third).not.toBe(first);
+    expect(document.body.contains(third)).toBe(true);
+    document.body.removeChild(third);
+  });
+
+  it('measureCapcoWidth returns 0 for empty text and a number otherwise', () => {
+    const plugin = new CapcoPlugin();
+
+    // Empty text short-circuits to 0.
+    expect(
+      plugin.measureCapcoWidth({ textContent: '' })
+    ).toBe(0);
+
+    // Non-empty text goes through the ruler measurement path.
+    const width = plugin.measureCapcoWidth({
+      textContent: '(U)',
+    });
+    expect(typeof width).toBe('number');
+  });
+
+  // jsdom's automatic custom-element upgrade is not deterministic across the full
+  // suite, so connectedCallback is invoked explicitly here to exercise its branches.
+  type CapcoMark = HTMLElement & { connectedCallback?: () => void };
+
+  it('capco-mark connectedCallback sets --capcoWidth on a hanging-indent paragraph', () => {
+    const para = document.createElement('p');
+    para.setAttribute('hangingindent', 'true');
+    document.body.appendChild(para);
+
+    // Setting the data attribute before connecting lets connectedCallback read it.
+    const mark = document.createElement('capco-mark') as CapcoMark;
+    mark.dataset.capcoWidth = '42';
+    para.appendChild(mark);
+    mark.connectedCallback?.();
+    expect(para.style.getPropertyValue('--capcoWidth')).toBe('42px');
+
+    // Re-running with the same value hits the "current === width" no-op branch.
+    mark.connectedCallback?.();
+    expect(para.style.getPropertyValue('--capcoWidth')).toBe('42px');
+
+    document.body.removeChild(para);
+  });
+
+  it('capco-mark connectedCallback returns early without width or a hanging-indent paragraph', () => {
+    // No width attribute → early return at the first guard.
+    const orphan = document.createElement('capco-mark') as CapcoMark;
+    document.body.appendChild(orphan);
+    orphan.connectedCallback?.();
+
+    // Width set but no matching paragraph ancestor → early return at the second guard.
+    const noPara = document.createElement('capco-mark') as CapcoMark;
+    noPara.dataset.capcoWidth = '10';
+    document.body.appendChild(noPara);
+    noPara.connectedCallback?.();
+    expect(noPara.style.getPropertyValue('--capcoWidth')).toBe('');
+
+    document.body.removeChild(orphan);
+    document.body.removeChild(noPara);
+  });
+
+  it('addBlockDecoratoration stores capcoWidth when hangingIndent and width > 0', () => {
+    const plugin = new CapcoPlugin(CAPCOMODE.FORCED, 'U');
+    const proto = Object.getPrototypeOf(plugin) as {
+      addBlockDecoratoration: (
+        node: PMNode,
+        state: EditorState,
+        pos: number,
+        decorations: unknown[]
+      ) => void;
+      setCapcoContent: (...args: unknown[]) => void;
+    };
+
+    jest.spyOn(proto, 'setCapcoContent').mockImplementation(() => undefined);
+    jest.spyOn(plugin, 'showHideCapco').mockReturnValue('');
+    jest.spyOn(plugin, 'measureCapcoWidth').mockReturnValue(10);
+
+    const state = {
+      doc: {
+        resolve: () => ({ parent: { type: { name: 'paragraph' } } }),
+      },
+    } as unknown as EditorState;
+
+    const decorations: unknown[] = [];
+    proto.addBlockDecoratoration.call(
+      plugin,
+      {
+        type: { name: 'paragraph' },
+        attrs: { capco: 'U', hangingIndent: true },
+        nodeSize: 3,
+        textContent: 'text',
+      },
+      state,
+      1,
+      decorations
+    );
+
+    expect(plugin.measureCapcoWidth).toHaveBeenCalled();
+    expect(decorations.length).toBe(1);
+  });
+});
+

@@ -30,6 +30,7 @@ export class CapcoContextMenu extends React.Component<
   capcoContextMenuProps,
   capcoContextMenuProps
 > {
+  menuRef = React.createRef<HTMLDivElement>();
   constructor(props: capcoContextMenuProps) {
     super(props);
     this.state = {
@@ -314,7 +315,48 @@ export class CapcoContextMenu extends React.Component<
       });
   }
 
+  focusFirstItem(): void {
+    const firstItem =
+      this.menuRef.current?.querySelector<HTMLElement>('.molcap-menu-item');
+    firstItem?.focus();
+  }
+
+  onMenuKeyDown = (e: React.KeyboardEvent<HTMLDivElement>): void => {
+    // Enter activates the currently focused menu item via its onClick handler.
+    if (e.key === 'Enter') {
+      const active = document.activeElement as HTMLElement | null;
+      if (active?.classList.contains('molcap-menu-item')) {
+        e.preventDefault();
+        e.stopPropagation();
+        active.click();
+      }
+      return;
+    }
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') {
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    const items = Array.from(
+      this.menuRef.current?.querySelectorAll<HTMLElement>('.molcap-menu-item') ??
+        []
+    );
+    if (!items.length) {
+      return;
+    }
+    const currentIndex = items.indexOf(document.activeElement as HTMLElement);
+    let nextIndex: number;
+    if (e.key === 'ArrowDown') {
+      nextIndex = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
+    } else {
+      nextIndex = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+    }
+    items[nextIndex].focus();
+  };
+
   componentDidMount() {
+    
+    requestAnimationFrame(() => this.focusFirstItem());
     // Perform asynchronous operation, for example, fetch data from a server
     // const response = await fetch('https://api.example.com/data');
     this.getCustomCapcoList()
@@ -324,19 +366,6 @@ export class CapcoContextMenu extends React.Component<
       .catch((error) => console.error('Error fetching data:', error));
   }
 
-  onKeyDownCmenuclicked = (e: React.KeyboardEvent<unknown>, item: CapcoEle) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      this.onCapcoMenuClicked.bind(this, item.name);
-    }
-  };
-  onKeyDownwrapItemWithCapco = (
-    e: React.KeyboardEvent<unknown>,
-    capcoitem: CapcoEle
-  ) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      this.wrapItemWithCapco(capcoitem.displayName);
-    }
-  };
   render(): React.ReactNode {
     let capcoList: CapcoEle[] = [];
     let defMenu: CapcoEle[] = [];
@@ -378,8 +407,10 @@ export class CapcoContextMenu extends React.Component<
 
     return (
       <div
+        ref={this.menuRef}
         className="ProseMirror molcap-context-menu"
         onMouseLeave={() => this.closePopUP()}
+        onKeyDown={this.onMenuKeyDown}
         role="menu"
         style={{
           background: 'white',
@@ -401,9 +432,9 @@ export class CapcoContextMenu extends React.Component<
           {defMenu.map((item) => (
             <li key={item.name}>
               <button
+                className="molcap-menu-item"
                 id={item.name}
                 onClick={this.onCapcoMenuClicked.bind(this, item.name)}
-                onKeyDown={(e) => this.onKeyDownCmenuclicked(e, item)}
                 style={{
                   all: 'unset', // Resets button styling completely
                   cursor: 'pointer', // Ensures it's still clickable
@@ -429,9 +460,9 @@ export class CapcoContextMenu extends React.Component<
           {capcoList.map((capcoitem) => (
             <li key={capcoitem.name}>
               <button
+                className="molcap-menu-item"
                 id={capcoitem.name}
                 onClick={() => this.wrapItemWithCapco(capcoitem.displayName)}
-                onKeyDown={(e) => this.onKeyDownwrapItemWithCapco(e, capcoitem)}
                 style={{
                   all: 'unset', // Resets button styling completely
                   cursor: 'pointer', // Ensures it's still clickable
@@ -466,13 +497,9 @@ export class CapcoContextMenu extends React.Component<
               }}
             >
               <button
+                className="molcap-menu-item"
                 id={customcapcoitem.name}
                 onClick={customcapcoitem.action}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    customcapcoitem.action(e);
-                  }
-                }}
                 style={{
                   all: 'unset', // Resets button styling completely
                   cursor: 'pointer', // Ensures it's still clickable

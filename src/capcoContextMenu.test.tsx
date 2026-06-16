@@ -1306,7 +1306,7 @@ describe('Capco Builder Component', () => {
     expect(mockEditorView.dispatch).toHaveBeenCalled();
   });
 
-  it('should handle onKeyDownCmenuclicked', () => {
+  it('should activate the focused menu item on Enter', () => {
     const capcocontextmenuprops = {
       capcoKey: 'capco',
       selectedCapco: 'selctedcapco',
@@ -1333,9 +1333,6 @@ describe('Capco Builder Component', () => {
       } as unknown as EditorView,
       position: { x: 1, y: 2 },
       pos: 2,
-      showSubMenu: true,
-      showCapcoModeSubMenu: true,
-      showDotOnCapcoMode: true,
       isCitation: false,
       customCapcoListItems: [],
       close: () => {
@@ -1343,67 +1340,158 @@ describe('Capco Builder Component', () => {
       },
     };
     const capcoContextMenu = new CapcoContextMenu(capcocontextmenuprops);
-    expect(
-      capcoContextMenu.onKeyDownCmenuclicked(
-        { key: '' } as React.KeyboardEvent<unknown>,
-        { name: 'name' }
-      )
-    ).toBeUndefined();
-    expect(
-      capcoContextMenu.onKeyDownCmenuclicked(
-        { key: 'Enter' } as React.KeyboardEvent<unknown>,
-        { name: 'name' }
-      )
-    ).toBeUndefined();
+
+    // A focused menu item should be clicked on Enter.
+    const item = document.createElement('button');
+    item.className = 'molcap-menu-item';
+    document.body.appendChild(item);
+    item.focus();
+    const clickSpy = jest.spyOn(item, 'click');
+    const preventDefault = jest.fn();
+    const stopPropagation = jest.fn();
+    capcoContextMenu.onMenuKeyDown({
+      key: 'Enter',
+      preventDefault,
+      stopPropagation,
+    } as unknown as React.KeyboardEvent<HTMLDivElement>);
+    expect(clickSpy).toHaveBeenCalled();
+    expect(preventDefault).toHaveBeenCalled();
+    expect(stopPropagation).toHaveBeenCalled();
+
+    // Enter is ignored when focus is not on a menu item.
+    item.blur();
+    clickSpy.mockClear();
+    capcoContextMenu.onMenuKeyDown({
+      key: 'Enter',
+      preventDefault: jest.fn(),
+      stopPropagation: jest.fn(),
+    } as unknown as React.KeyboardEvent<HTMLDivElement>);
+    expect(clickSpy).not.toHaveBeenCalled();
+
+    document.body.removeChild(item);
   });
-  it('should handle onKeyDownwrapItemWithCapco', () => {
-    const capcocontextmenuprops = {
-      capcoKey: 'capco',
-      selectedCapco: 'selctedcapco',
+
+  const buildArrowMenu = (count: number) => {
+    const menu = document.createElement('div');
+    const items: HTMLButtonElement[] = [];
+    for (let i = 0; i < count; i++) {
+      const btn = document.createElement('button');
+      btn.className = 'molcap-menu-item';
+      menu.appendChild(btn);
+      items.push(btn);
+    }
+    document.body.appendChild(menu);
+    return { menu, items };
+  };
+
+  const makeArrowMenuProps = () =>
+    ({
       editorView: {
-        state: {
-          selection: { $head: { depth: 0 } },
-          doc: {
-            nodeAt: () => {
-              return { attrs: { capco: 'SI' }, type: { name: '' } };
-            },
-          },
-          tr: {
-            setNodeMarkup: () => {
-              return {};
-            },
-          },
-        },
-        dispatch: () => {
-          return {};
-        },
-        posAtCoords: () => {
-          return {};
-        },
+        state: { selection: { $head: { depth: 0 } } },
       } as unknown as EditorView,
       position: { x: 1, y: 2 },
       pos: 2,
-      cursorPosition: { x: 2, y: 2 },
-      showSubMenu: true,
-      showCapcoModeSubMenu: true,
-      showDotOnCapcoMode: true,
       isCitation: false,
       customCapcoListItems: [],
-      close: () => {
-        return 1;
-      },
+      close: () => 1,
+    }) as unknown as ConstructorParameters<typeof CapcoContextMenu>[0];
+
+  it('should move focus down and wrap around on ArrowDown', () => {
+    const instance = new CapcoContextMenu(makeArrowMenuProps());
+    const { menu, items } = buildArrowMenu(3);
+    instance.menuRef = { current: menu };
+
+    items[0].focus();
+    instance.onMenuKeyDown({
+      key: 'ArrowDown',
+      preventDefault: jest.fn(),
+      stopPropagation: jest.fn(),
+    } as unknown as React.KeyboardEvent<HTMLDivElement>);
+    expect(document.activeElement).toBe(items[1]);
+
+    // From the last item, ArrowDown wraps to the first.
+    items[2].focus();
+    instance.onMenuKeyDown({
+      key: 'ArrowDown',
+      preventDefault: jest.fn(),
+      stopPropagation: jest.fn(),
+    } as unknown as React.KeyboardEvent<HTMLDivElement>);
+    expect(document.activeElement).toBe(items[0]);
+
+    document.body.removeChild(menu);
+  });
+
+  it('should move focus up and wrap around on ArrowUp', () => {
+    const instance = new CapcoContextMenu(makeArrowMenuProps());
+    const { menu, items } = buildArrowMenu(3);
+    instance.menuRef = { current: menu };
+
+    items[2].focus();
+    instance.onMenuKeyDown({
+      key: 'ArrowUp',
+      preventDefault: jest.fn(),
+      stopPropagation: jest.fn(),
+    } as unknown as React.KeyboardEvent<HTMLDivElement>);
+    expect(document.activeElement).toBe(items[1]);
+
+    // From the first item, ArrowUp wraps to the last.
+    items[0].focus();
+    instance.onMenuKeyDown({
+      key: 'ArrowUp',
+      preventDefault: jest.fn(),
+      stopPropagation: jest.fn(),
+    } as unknown as React.KeyboardEvent<HTMLDivElement>);
+    expect(document.activeElement).toBe(items[2]);
+
+    document.body.removeChild(menu);
+  });
+
+  it('should ignore keys other than Enter and arrows', () => {
+    const instance = new CapcoContextMenu(makeArrowMenuProps());
+    const { menu, items } = buildArrowMenu(2);
+    instance.menuRef = { current: menu };
+    items[0].focus();
+    const preventDefault = jest.fn();
+    instance.onMenuKeyDown({
+      key: 'a',
+      preventDefault,
+      stopPropagation: jest.fn(),
+    } as unknown as React.KeyboardEvent<HTMLDivElement>);
+    expect(preventDefault).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(items[0]);
+    document.body.removeChild(menu);
+  });
+
+  it('should do nothing on ArrowDown when there are no menu items', () => {
+    const instance = new CapcoContextMenu(makeArrowMenuProps());
+    const emptyMenu = document.createElement('div');
+    document.body.appendChild(emptyMenu);
+    instance.menuRef = {
+      current: emptyMenu,
     };
-    const capcoContextMenu = new CapcoContextMenu(capcocontextmenuprops);
-    const spy = jest.spyOn(capcoContextMenu, 'wrapItemWithCapco');
-    capcoContextMenu.onKeyDownwrapItemWithCapco(
-      { key: '' } as React.KeyboardEvent,
-      { displayName: '{"ism": {"classification": "U"}}' }
-    );
-    capcoContextMenu.onKeyDownwrapItemWithCapco(
-      { key: 'Enter' } as React.KeyboardEvent,
-      { displayName: '{"ism": {"classification": "U"}}' }
-    );
-    expect(spy).toHaveBeenCalled();
+    expect(() =>
+      instance.onMenuKeyDown({
+        key: 'ArrowDown',
+        preventDefault: jest.fn(),
+        stopPropagation: jest.fn(),
+      } as unknown as React.KeyboardEvent<HTMLDivElement>)
+    ).not.toThrow();
+    document.body.removeChild(emptyMenu);
+  });
+
+  it('should focus the first menu item via focusFirstItem', () => {
+    const instance = new CapcoContextMenu(makeArrowMenuProps());
+    const { menu, items } = buildArrowMenu(2);
+    instance.menuRef = { current: menu };
+    instance.focusFirstItem();
+    expect(document.activeElement).toBe(items[0]);
+    document.body.removeChild(menu);
+
+    // No menu items present: should not throw.
+    instance.menuRef = {
+      current: document.createElement('div'),
+    };
+    expect(() => instance.focusFirstItem()).not.toThrow();
   });
 
   it('should return the original capcoList when customCapcoListItems is undefined', () => {
