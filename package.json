@@ -1,6 +1,6 @@
 {
   "name": "@modusoperandi/licit-capco",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "type": "module",
   "description": "MO's Capco ProseMirror Plugin",
   "main": "index.js",
@@ -51,7 +51,7 @@
     "jest-junit": "^14.0.1",
     "jest-prosemirror": "^3.0.1",
     "jest-sonar-reporter": "^2.0.0",
-    "prettier": "^3.8.4",
+    "prettier": "^3.8.5",
     "prosemirror-test-builder": "^1.1.1",
     "react-dom": "^18.3.1",
     "ts-jest": "^29.4.11",
