@@ -241,6 +241,8 @@ export class CapcoContextMenu extends React.Component<
     if (this.props.isCitation) {
       return;
     }
+    // Preserve the user's selection: switching CAPCO must not collapse it.
+    const originalSelection = this.props.editorView.state.selection;
     let pos = this.props.pos - 1; // nodeAt and setNodeMarkup resolve to the node AFTER the given position, so -1 to correct for that.
     let enhanced_capco_pos = pos;
     let node = this.props.editorView.state.doc.nodeAt(pos);
@@ -305,10 +307,21 @@ export class CapcoContextMenu extends React.Component<
       }
       tr.setNodeMarkup(enhanced_capco_pos, null, newAttrs);
     }
+    // Re-assert the original selection on the transaction. Attribute-only
+    // changes (setNodeMarkup) don't move content, so the mapped selection is
+    // identical to the original; this keeps the selected paragraph(s) selected
+    // instead of collapsing when the CAPCO is switched.
+    if (typeof tr.setSelection === 'function') {
+      tr.setSelection(originalSelection.map(tr.doc, tr.mapping));
+    }
     if (typeof tr.setMeta === 'function') {
       tr.setMeta('capcoChangedPos', capcoChangedPositions);
     }
     this.props.editorView.dispatch(tr);
+    // The menu lives in a popup outside the editor, so clicking it blurred the
+    // contenteditable and cleared the visible selection. Refocus so the
+    // preserved selection is rendered back to the DOM.
+    this.props.editorView.focus?.();
     this.props.close();
   }
   closePopUP(): void {
