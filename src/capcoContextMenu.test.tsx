@@ -251,6 +251,73 @@ describe('Capco Builder Component', () => {
     expect(hit).toBe(1);
   });
 
+  it('should apply capco to all selected paragraphs', () => {
+    const capco = JSON.stringify({
+      ism: { classification: 'U' },
+      portionMarking: 'U',
+    });
+    const paragraphNode = {
+      attrs: { capco: 'TBD' },
+      type: { name: 'paragraph' },
+    };
+    const setNodeMarkup = jest.fn().mockReturnThis();
+    const tr = {
+      doc: {
+        nodeAt: jest.fn().mockReturnValue(paragraphNode),
+      },
+      setMeta: jest.fn().mockReturnThis(),
+      setNodeMarkup,
+    };
+    const mockDoc = {
+      nodeAt: jest.fn().mockReturnValue(paragraphNode),
+      nodesBetween: jest.fn((_from, _to, callback) => {
+        [0, 7, 14].forEach((pos) => {
+          callback(paragraphNode, pos);
+        });
+      }),
+    };
+    const mockEditorView = {
+      state: {
+        doc: mockDoc,
+        selection: { empty: false, from: 1, to: 20 },
+        tr,
+      },
+      dom: { dispatchEvent: jest.fn() },
+      dispatch: jest.fn(),
+    };
+    const capcoContextMenu = new CapcoContextMenu({
+      editorView: mockEditorView as unknown as EditorView,
+      position: { x: 1, y: 2 },
+      pos: 1,
+      customCapcoListItems: [],
+      close: jest.fn(),
+    });
+
+    capcoContextMenu.setCapco(capco);
+
+    expect(setNodeMarkup).toHaveBeenCalledTimes(3);
+    expect(setNodeMarkup).toHaveBeenNthCalledWith(
+      1,
+      0,
+      null,
+      expect.objectContaining({ capco })
+    );
+    expect(setNodeMarkup).toHaveBeenNthCalledWith(
+      2,
+      7,
+      null,
+      expect.objectContaining({ capco })
+    );
+    expect(setNodeMarkup).toHaveBeenNthCalledWith(
+      3,
+      14,
+      null,
+      expect.objectContaining({ capco })
+    );
+    expect(tr.setMeta).toHaveBeenCalledWith('capcoChangedPos', [0, 7, 14]);
+    expect(mockEditorView.dispatch).toHaveBeenCalledWith(tr);
+  });
+
   it('should handle wrapItemWithCapco', () => {
     const tr = {
       doc: {
