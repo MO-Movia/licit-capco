@@ -14,10 +14,13 @@ import {
   TABLE_FIGURE_CAPCO,
 } from './constants';
 import { SYSTEMCAPCO } from './editorSchema';
-import type { Node as ProseMirrorNode } from 'prosemirror-model';
+import type { NodeType, Node as ProseMirrorNode } from 'prosemirror-model';
+import { Node } from 'prosemirror-model';
 import { EditorView } from 'prosemirror-view';
 import { CapcoRuntime, CapcoState } from './types';
 import { getBlockControlCapco, safeCapcoParse } from './utils';
+import { findParentNodeClosestToPos } from 'prosemirror-utils';
+import { EditorState, Transaction } from 'prosemirror-state';
 
 export type capcoContextMenuProps = {
   editorView: EditorView;
@@ -305,6 +308,8 @@ export class CapcoContextMenu extends React.Component<
       ) {
         enhanced_capco_pos = enhanced_capco_pos + 2;
       }
+      const { schema } = this.props.editorView.state;
+      tr = this.markEnhancedTableFigureDirty(tr, this.props.editorView.state, enhanced_capco_pos, schema?.nodes?.enhanced_table_figure);
       tr.setNodeMarkup(enhanced_capco_pos, null, newAttrs);
     }
     // Re-assert the original selection on the transaction. Attribute-only
@@ -323,6 +328,34 @@ export class CapcoContextMenu extends React.Component<
     // preserved selection is rendered back to the DOM.
     this.props.editorView.focus?.();
     this.props.close();
+  }
+  private markEnhancedTableFigureDirty(
+    tr: Transaction,
+    nextState: EditorState,
+    pos: number,
+    enhancedTableFigureType: NodeType
+  ): Transaction {
+
+    const parentEnhancedTableFigure = this.getParentByPosition(
+      nextState.doc,
+      pos,
+      enhancedTableFigureType
+    );
+    if (!parentEnhancedTableFigure || parentEnhancedTableFigure.node.attrs.dirty) {
+      return tr;
+    }
+
+    tr ??= nextState.tr;
+    return tr.setNodeMarkup(parentEnhancedTableFigure.pos, null, {
+      ...parentEnhancedTableFigure.node.attrs,
+      dirty: true,
+    });
+  }
+  private getParentByPosition(doc: Node, pos: number, type: NodeType) {
+    return findParentNodeClosestToPos(
+      doc.resolve(pos),
+      (node) => node.type === type
+    );
   }
   closePopUP(): void {
     this.props.close();
@@ -390,7 +423,7 @@ export class CapcoContextMenu extends React.Component<
     e.stopPropagation();
     const items = Array.from(
       this.menuRef.current?.querySelectorAll<HTMLElement>('.molcap-menu-item') ??
-        []
+      []
     );
     if (!items.length) {
       return;
@@ -406,7 +439,7 @@ export class CapcoContextMenu extends React.Component<
   };
 
   componentDidMount() {
-    
+
     requestAnimationFrame(() => this.focusFirstItem());
     // Perform asynchronous operation, for example, fetch data from a server
     // const response = await fetch('https://api.example.com/data');
