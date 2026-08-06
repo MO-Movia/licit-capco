@@ -247,7 +247,6 @@ export class CapcoContextMenu extends React.Component<
     // Preserve the user's selection: switching CAPCO must not collapse it.
     const originalSelection = this.props.editorView.state.selection;
     let pos = this.props.pos - 1; // nodeAt and setNodeMarkup resolve to the node AFTER the given position, so -1 to correct for that.
-    let enhanced_capco_pos = pos;
     let node = this.props.editorView.state.doc.nodeAt(pos);
     if (!node) {
       const $from = this.props.editorView.state.selection.$from;
@@ -295,23 +294,7 @@ export class CapcoContextMenu extends React.Component<
     } else {
       tr = tr.setNodeMarkup(pos, null, newAttrs);
     }
-    if (node?.type?.name === TABLE_FIGURE_CAPCO) {
-      const newAttrs = {
-        ...ParentNodeType?.attrs,
-        [CAPCOKEY]: safeCapcoParse(capco).portionMarking,
-        ['isValidate']: false,
-      };
-      const enhanced_capco_node = tr.doc?.nodeAt(enhanced_capco_pos);
-      if (
-        ParentNodeType?.type?.name !== TABLE &&
-        enhanced_capco_node?.type.name !== TABLE_FIGURE_CAPCO
-      ) {
-        enhanced_capco_pos = enhanced_capco_pos + 2;
-      }
-      const { schema } = this.props.editorView.state;
-      tr = this.markEnhancedTableFigureDirty(tr, this.props.editorView.state, enhanced_capco_pos, schema?.nodes?.enhanced_table_figure);
-      tr.setNodeMarkup(enhanced_capco_pos, null, newAttrs);
-    }
+    tr = this.setCapco_eic(ParentNodeType, node, tr, capco, pos);
     // Re-assert the original selection on the transaction. Attribute-only
     // changes (setNodeMarkup) don't move content, so the mapped selection is
     // identical to the original; this keeps the selected paragraph(s) selected
@@ -328,6 +311,26 @@ export class CapcoContextMenu extends React.Component<
     // preserved selection is rendered back to the DOM.
     this.props.editorView.focus?.();
     this.props.close();
+  }
+  setCapco_eic(ParentNodeType: ProseMirrorNode, node: Node, tr: Transaction, capco: string | null, pos: number): Transaction {
+    if (node?.type?.name === TABLE_FIGURE_CAPCO) {
+      const newAttrs = {
+        ...ParentNodeType?.attrs,
+        [CAPCOKEY]: safeCapcoParse(capco).portionMarking,
+        ['isValidate']: false,
+      };
+      const enhanced_capco_node = tr.doc?.nodeAt(pos);
+      if (
+        ParentNodeType?.type?.name !== TABLE &&
+        enhanced_capco_node?.type.name !== TABLE_FIGURE_CAPCO
+      ) {
+        pos = pos + 2;
+      }
+      const { schema } = this.props.editorView.state;
+      tr = this.markEnhancedTableFigureDirty(tr, this.props.editorView.state, pos, schema?.nodes?.enhanced_table_figure);
+      tr.setNodeMarkup(pos, null, newAttrs);
+    }
+    return tr;
   }
   private markEnhancedTableFigureDirty(
     tr: Transaction,
