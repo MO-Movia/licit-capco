@@ -1581,3 +1581,150 @@ describe('Capco Builder Component', () => {
     expect(result).toEqual(capcoList);
   });
 });
+
+describe('EIC CAPCO targets', () => {
+  it.each(['table', 'figure'])(
+    'updates the wrapped EIC %s payload and its CAPCO footer',
+    (figureType) => {
+      const schema = createWrappedEicSchema();
+      const isImage = figureType === 'figure';
+      const payload = isImage
+        ? schema.nodes.image.create({
+            src: 'eic.png',
+            capco: null,
+            layoutId: 'keep-image-layout',
+          })
+        : schema.nodes.table.create({
+            capco: null,
+            layoutId: 'keep-table-layout',
+          });
+      const wrapper = isImage
+        ? schema.nodes.enhanced_table_figure_image.create({}, payload)
+        : schema.nodes.enhanced_table_figure_table.create({}, payload);
+      const body = schema.nodes.enhanced_table_figure_body.create({}, wrapper);
+      const footer = schema.nodes.enhanced_table_figure_capco.create({
+        capco: null,
+        form: 'short',
+      });
+      const figure = schema.nodes.enhanced_table_figure.create(
+        { figureType },
+        [body, footer]
+      );
+      const state = EditorState.create({
+        doc: schema.nodes.doc.create({}, figure),
+        schema,
+      });
+      const footerPos = findTestNodePosition(
+        state,
+        'enhanced_table_figure_capco'
+      );
+      const dispatch = jest.fn();
+      const close = jest.fn();
+      const view = {
+        state,
+        dom: document.createElement('div'),
+        dispatch,
+        focus: jest.fn(),
+      } as unknown as EditorView;
+      const menu = new CapcoContextMenu({
+        editorView: view,
+        position: { x: 0, y: 0 },
+        pos: footerPos + 1,
+        customCapcoListItems: [],
+        close,
+      });
+      const capco = JSON.stringify({
+        ism: { classification: 'S' },
+        portionMarking: 'S',
+      });
+
+      menu.setCapco(capco);
+
+      const nextState = state.apply(dispatch.mock.calls[0][0]);
+      const targetType = isImage ? 'image' : 'table';
+      const target = nextState.doc.nodeAt(
+        findTestNodePosition(nextState, targetType)
+      );
+      const nextFooter = nextState.doc.nodeAt(
+        findTestNodePosition(nextState, 'enhanced_table_figure_capco')
+      );
+      expect(target?.attrs.capco).toBe(capco);
+      expect(target?.attrs.layoutId).toBe(
+        isImage ? 'keep-image-layout' : 'keep-table-layout'
+      );
+      expect(nextFooter?.attrs.capco).toBe('S');
+      expect(nextFooter?.attrs.form).toBe('short');
+      expect(close).toHaveBeenCalled();
+    }
+  );
+});
+
+function createWrappedEicSchema() {
+  const payloadAttrs = {
+    capco: { default: null },
+    layoutId: { default: '' },
+    objectMetaData: { default: null },
+    isValidate: { default: false },
+  };
+  return new Schema({
+    nodes: {
+      doc: { content: 'block+' },
+      text: { group: 'inline' },
+      table: {
+        group: 'block',
+        attrs: payloadAttrs,
+        toDOM: () => ['table'],
+      },
+      image: {
+        inline: true,
+        group: 'inline',
+        attrs: {
+          ...payloadAttrs,
+          src: { default: '' },
+        },
+        toDOM: (node) => ['img', { src: node.attrs.src }],
+      },
+      enhanced_table_figure_table: {
+        group: 'block',
+        content: 'table',
+        toDOM: () => ['div', 0],
+      },
+      enhanced_table_figure_image: {
+        group: 'block',
+        content: 'image',
+        toDOM: () => ['div', 0],
+      },
+      enhanced_table_figure_body: {
+        content:
+          '(enhanced_table_figure_table | enhanced_table_figure_image)',
+        toDOM: () => ['div', 0],
+      },
+      enhanced_table_figure_capco: {
+        content: 'text*',
+        attrs: {
+          capco: { default: null },
+          isValidate: { default: false },
+          form: { default: 'long' },
+        },
+        toDOM: () => ['div', 0],
+      },
+      enhanced_table_figure: {
+        group: 'block',
+        content:
+          'enhanced_table_figure_body enhanced_table_figure_capco',
+        attrs: { figureType: { default: 'table' } },
+        toDOM: () => ['div', 0],
+      },
+    },
+  });
+}
+
+function findTestNodePosition(state: EditorState, typeName: string): number {
+  let found = -1;
+  state.doc.descendants((node, pos) => {
+    if (found < 0 && node.type.name === typeName) {
+      found = pos;
+    }
+  });
+  return found;
+}
