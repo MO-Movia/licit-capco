@@ -294,23 +294,7 @@ export class CapcoContextMenu extends React.Component<
     } else {
       tr = tr.setNodeMarkup(pos, null, newAttrs);
     }
-    if (isEnhancedFigureCapco) {
-      let enhanced_capco_node = tr.doc?.nodeAt(enhanced_capco_pos);
-      if (
-        ParentNodeType?.type?.name !== TABLE &&
-        enhanced_capco_node?.type.name !== TABLE_FIGURE_CAPCO
-      ) {
-        enhanced_capco_pos = enhanced_capco_pos + 2;
-        enhanced_capco_node = tr.doc?.nodeAt(enhanced_capco_pos);
-      }
-      const newAttrs = {
-        ...enhanced_capco_node?.attrs,
-        [CAPCOKEY]: safeCapcoParse(capco).portionMarking,
-        ['isValidate']: false,
-      };
-      tr.setNodeMarkup(enhanced_capco_pos, null, newAttrs);
-    }
-    tr = this.setCapco_eic(ParentNodeType, node, tr, capco, pos);
+    tr = this.setCapco_eic(ParentNodeType, node, tr, capco, pos, enhanced_capco_pos, isEnhancedFigureCapco);
     // Re-assert the original selection on the transaction. Attribute-only
     // changes (setNodeMarkup) don't move content, so the mapped selection is
     // identical to the original; this keeps the selected paragraph(s) selected
@@ -328,7 +312,25 @@ export class CapcoContextMenu extends React.Component<
     this.props.editorView.focus?.();
     this.props.close();
   }
-  setCapco_eic(ParentNodeType: ProseMirrorNode, node: Node, tr: Transaction, capco: string | null, pos: number): Transaction {
+
+  setCapco_eic(ParentNodeType: ProseMirrorNode, node: Node, tr: Transaction, capco: string | null, pos: number, enhanced_capco_pos: number, isEnhancedFigureCapco: boolean): Transaction {
+
+    if (isEnhancedFigureCapco) {
+      let enhanced_capco_node = tr.doc?.nodeAt(enhanced_capco_pos);
+      if (
+        ParentNodeType?.type?.name !== TABLE &&
+        enhanced_capco_node?.type.name !== TABLE_FIGURE_CAPCO
+      ) {
+        enhanced_capco_pos = enhanced_capco_pos + 2;
+        enhanced_capco_node = tr.doc?.nodeAt(enhanced_capco_pos);
+      }
+      const newAttrs = {
+        ...enhanced_capco_node?.attrs,
+        [CAPCOKEY]: safeCapcoParse(capco).portionMarking,
+        ['isValidate']: false,
+      };
+      tr.setNodeMarkup(enhanced_capco_pos, null, newAttrs);
+    }
     if (node?.type?.name === TABLE_FIGURE_CAPCO) {
       const newAttrs = {
         ...ParentNodeType?.attrs,

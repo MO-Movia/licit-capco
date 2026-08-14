@@ -20,7 +20,7 @@
 .czi-editor-frameset .molcap-context-menu {
   font-family: calibri, serif;
   font-size: 16px;
-  background: white;
+  background: #fff;
   border: 1px solid #a9a5a5;
   border-radius: 1px;
   box-shadow: 0 5px 5px #c3c3c3;
@@ -89,7 +89,7 @@
   height: fit-content;
   margin-top: 9px;
   font-size: 12px;
-  background-color: #be5757;
+  background-color: #a64545;
   border: none;
   color: white;
   border-radius: 6px;

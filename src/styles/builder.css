@@ -270,11 +270,11 @@
 
 .czi-editor-frameset .molcap-btn-text {
   padding-top: 3px;
-  color: grey;
+  color: #595959;
   font-size: 20px;
   border-radius: 20px;
-  border-color: grey;
-  background-color: white;
+  border-color: #595959;
+  background-color: #fff;
   font-weight: 600;
   width: 341px;
   height: 45px;
@@ -294,9 +294,9 @@
   margin-top: 9px;
   margin-right: 32px;
   font-size: 12px;
-  background-color: grey;
+  background-color: #595959;
   border: none;
-  color: white;
+  color: #fff;
   border-radius: 8px;
 }
 
