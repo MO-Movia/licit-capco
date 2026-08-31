@@ -30,7 +30,11 @@ import {
 } from '@modusoperandi/licit-ui-commands';
 import { CapcoView } from './capcoView';
 import { CAPCO, CapcoRuntime } from './types';
-import { getBlockControlCapco, getCapcoString } from './utils';
+import {
+  getBlockControlCapco,
+  getCapcoString,
+  isInsideEnhancedTableFigureBody,
+} from './utils';
 
 const NONE = 'none';
 const DEFAULT_ALLOWED_NODE_TYPES = [PARAGRAPH, TABLE_FIGURE_CAPCO];
@@ -363,8 +367,7 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
     needValidate.style.color = 'grey';
 
     if (TABLE === node.type.name) {
-      const parentNode = state.doc.resolve(pos);
-      if (parentNode.parent.type.name !== 'enhanced_table_figure_body') {
+      if (!isInsideEnhancedTableFigureBody(state, pos)) {
         decorations.push(
           Decoration.widget(node.nodeSize + pos, capcoMark, { side: -1 })
         );
@@ -389,7 +392,7 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
     const rulerElement = this.getOrCreateTempCapcoElement();
 
     // Copy font styles from capcoMark to rulerElement
-    const computedStyle = window.getComputedStyle(
+    const computedStyle = globalThis.getComputedStyle(
       document.querySelector('.ProseMirror') || document.body
     );
     rulerElement.style.fontSize = computedStyle.fontSize;
@@ -418,14 +421,14 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
     return ruler;
   }
 
-  enhancedTableFigureCapco(capco: string, isFigureBlock: boolean): string {
+  enhancedTableFigureCapco(capco: string, _isFigureBlock?: boolean): string {
     const capcoString: Record<string, string> = {
-      TBD: isFigureBlock ? 'TBD' : 'To be Determined',
+      TBD: 'To be Determined',
       U: 'Unclassified',
-      C: isFigureBlock ? 'C' : 'Confidential',
-      S: isFigureBlock ? 'S' : 'Secret',
-      TS: isFigureBlock ? 'TS' : 'Top Secret',
-      CUI: isFigureBlock ? 'CUI' : 'Controlled Unclassified Information',
+      C: 'Confidential',
+      S: 'Secret',
+      TS: 'Top Secret',
+      CUI: 'Controlled Unclassified Information',
     };
     return capcoString[capco] || capco;
   }
@@ -707,7 +710,7 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
 
   getCapcoFromSlice(slice: Slice): string | null {
     let capco: string | null = null;
-      if (this.mode !== CAPCOMODE.NONE &&
+    if (this.mode !== CAPCOMODE.NONE &&
       slice.content?.childCount !== 0
     ) {
       // Copy full paragraph, the pasted paragraph shall have same CAPCO.
@@ -816,34 +819,34 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
       TBD: '#454545', // dark gray
     };
 
-  if (this.mode === CAPCOMODE.FORCED) {
-    let capcoText = '';
-    const parentNode = state.doc.resolve(pos);
+    if (this.mode === CAPCOMODE.FORCED) {
+      let capcoText = '';
+      const parentNode = state.doc.resolve(pos);
 
-    if ([TABLE_FIGURE_CAPCO, TABLE_FIGURE].includes(nodeType)) {
-      capco = state.doc.nodeAt(getBlockControlCapco(state, pos))?.attrs?.capco;
-      const isFigureBlock =
+      if ([TABLE_FIGURE_CAPCO, TABLE_FIGURE].includes(nodeType)) {
+        capco = state.doc.nodeAt(getBlockControlCapco(state, pos))?.attrs?.capco;
+        const isFigureBlock =
+          parentNode.parent.type.name === TABLE_FIGURE &&
+          parentNode.parent.attrs.figureType === 'figure';
+
+        capcoText = getCapcoString(capco, this.defaultCapco);
+        capcoText = this.enhancedTableFigureCapco(capcoText, isFigureBlock);
+        capcoMark.textContent = capcoText;
+        capcoMark.style.color = '#6A5ACD';
+      } else {
+        capcoText = getCapcoString(capco, this.defaultCapco);
+        capcoMark.textContent = `(${capcoText}) `;
+      }
+
+      const colorKey = capcoText.toUpperCase();
+      if (
         parentNode.parent.type.name === TABLE_FIGURE &&
-        parentNode.parent.attrs.figureType === 'figure';
-
-      capcoText = getCapcoString(capco, this.defaultCapco);
-      capcoText = this.enhancedTableFigureCapco(capcoText, isFigureBlock);
-      capcoMark.textContent = capcoText;
-      capcoMark.style.color = '#6A5ACD';
-    } else {
-      capcoText = getCapcoString(capco, this.defaultCapco);
-      capcoMark.textContent = `(${capcoText}) `;
+        capcoColors[colorKey]
+      ) {
+        capcoMark.style.color = capcoColors[colorKey];
+        capcoMark.style.textTransform = 'uppercase';
+      }
     }
-
-    const colorKey = capcoText.toUpperCase();
-    if (
-      parentNode.parent.type.name === TABLE_FIGURE &&
-      capcoColors[colorKey]
-    ) {
-      capcoMark.style.color = capcoColors[colorKey];
-      capcoMark.style.textTransform = 'uppercase';
-    }
-  }
   }
 
   showHideCapco(_state: EditorState, textContent: string): string {

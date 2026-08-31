@@ -14,10 +14,13 @@ import {
   TABLE_FIGURE_CAPCO,
 } from './constants';
 import { SYSTEMCAPCO } from './editorSchema';
-import type { Node as ProseMirrorNode } from 'prosemirror-model';
+import type { NodeType, Node as ProseMirrorNode } from 'prosemirror-model';
+import { Node } from 'prosemirror-model';
 import { EditorView } from 'prosemirror-view';
 import { CapcoRuntime, CapcoState } from './types';
 import { getBlockControlCapco, safeCapcoParse } from './utils';
+import { findParentNodeClosestToPos } from 'prosemirror-utils';
+import { EditorState, Transaction } from 'prosemirror-state';
 
 export type capcoContextMenuProps = {
   editorView: EditorView;
@@ -262,19 +265,18 @@ export class CapcoContextMenu extends React.Component<
         }
       }
     }
-    if (node?.type?.name === TABLE_FIGURE_CAPCO) {
+    const isEnhancedFigureCapco = node?.type?.name === TABLE_FIGURE_CAPCO;
+    if (isEnhancedFigureCapco) {
       pos = getBlockControlCapco(this.props.editorView.state, pos);
     }
-    let newAttrs = this.getCapcoAttrs(node, capco);
+    const targetNode = this.props.editorView.state.doc.nodeAt(pos) ?? node;
+    const newAttrs = this.getCapcoAttrs(targetNode, capco);
     const event = new KeyboardEvent('keydown', {
       keyCode: 0,
       bubbles: true,
     });
     this.props.editorView.dom?.dispatchEvent(event);
     const ParentNodeType = this.props.editorView.state.doc.nodeAt(pos);
-    if (ParentNodeType?.type?.name === 'image') {
-      newAttrs = this.getCapcoAttrs(ParentNodeType, capco);
-    }
     const selectedParagraphPositions =
       node?.type?.name === PARAGRAPH ? this.getSelectedParagraphPositions() : [];
     const capcoChangedPositions =
@@ -292,21 +294,7 @@ export class CapcoContextMenu extends React.Component<
     } else {
       tr = tr.setNodeMarkup(pos, null, newAttrs);
     }
-    if (node?.type?.name === TABLE_FIGURE_CAPCO) {
-      const newAttrs = {
-        ...ParentNodeType?.attrs,
-        [CAPCOKEY]: safeCapcoParse(capco).portionMarking,
-        ['isValidate']: false,
-      };
-      const enhanced_capco_node = tr.doc?.nodeAt(enhanced_capco_pos);
-      if (
-        ParentNodeType?.type?.name !== TABLE &&
-        enhanced_capco_node?.type.name !== TABLE_FIGURE_CAPCO
-      ) {
-        enhanced_capco_pos = enhanced_capco_pos + 2;
-      }
-      tr.setNodeMarkup(enhanced_capco_pos, null, newAttrs);
-    }
+    tr = this.setCapco_eic(ParentNodeType, node, tr, capco, pos, enhanced_capco_pos, isEnhancedFigureCapco);
     // Re-assert the original selection on the transaction. Attribute-only
     // changes (setNodeMarkup) don't move content, so the mapped selection is
     // identical to the original; this keeps the selected paragraph(s) selected
@@ -323,6 +311,72 @@ export class CapcoContextMenu extends React.Component<
     // preserved selection is rendered back to the DOM.
     this.props.editorView.focus?.();
     this.props.close();
+  }
+
+  setCapco_eic(ParentNodeType: ProseMirrorNode, node: Node, tr: Transaction, capco: string | null, pos: number, enhanced_capco_pos: number, isEnhancedFigureCapco: boolean): Transaction {
+
+    if (isEnhancedFigureCapco) {
+      let enhanced_capco_node = tr.doc?.nodeAt(enhanced_capco_pos);
+      if (
+        ParentNodeType?.type?.name !== TABLE &&
+        enhanced_capco_node?.type.name !== TABLE_FIGURE_CAPCO
+      ) {
+        enhanced_capco_pos = enhanced_capco_pos + 2;
+        enhanced_capco_node = tr.doc?.nodeAt(enhanced_capco_pos);
+      }
+      const newAttrs = {
+        ...enhanced_capco_node?.attrs,
+        [CAPCOKEY]: safeCapcoParse(capco).portionMarking,
+        ['isValidate']: false,
+      };
+      tr.setNodeMarkup(enhanced_capco_pos, null, newAttrs);
+    }
+    if (node?.type?.name === TABLE_FIGURE_CAPCO) {
+      const newAttrs = {
+        ...ParentNodeType?.attrs,
+        [CAPCOKEY]: safeCapcoParse(capco).portionMarking,
+        ['isValidate']: false,
+      };
+      const enhanced_capco_node = tr.doc?.nodeAt(pos);
+      if (
+        ParentNodeType?.type?.name !== TABLE &&
+        enhanced_capco_node?.type.name !== TABLE_FIGURE_CAPCO
+      ) {
+        pos = pos + 2;
+      }
+      const { schema } = this.props.editorView.state;
+      tr = this.markEnhancedTableFigureDirty(tr, this.props.editorView.state, pos, schema?.nodes?.enhanced_table_figure);
+      tr.setNodeMarkup(pos, null, newAttrs);
+    }
+    return tr;
+  }
+  private markEnhancedTableFigureDirty(
+    tr: Transaction,
+    nextState: EditorState,
+    pos: number,
+    enhancedTableFigureType: NodeType
+  ): Transaction {
+
+    const parentEnhancedTableFigure = this.getParentByPosition(
+      nextState.doc,
+      pos,
+      enhancedTableFigureType
+    );
+    if (!parentEnhancedTableFigure || parentEnhancedTableFigure.node.attrs.dirty) {
+      return tr;
+    }
+
+    tr ??= nextState.tr;
+    return tr.setNodeMarkup(parentEnhancedTableFigure.pos, null, {
+      ...parentEnhancedTableFigure.node.attrs,
+      dirty: true,
+    });
+  }
+  private getParentByPosition(doc: Node, pos: number, type: NodeType) {
+    return findParentNodeClosestToPos(
+      doc.resolve(pos),
+      (node) => node.type === type
+    );
   }
   closePopUP(): void {
     this.props.close();
@@ -390,7 +444,7 @@ export class CapcoContextMenu extends React.Component<
     e.stopPropagation();
     const items = Array.from(
       this.menuRef.current?.querySelectorAll<HTMLElement>('.molcap-menu-item') ??
-        []
+      []
     );
     if (!items.length) {
       return;
@@ -406,7 +460,7 @@ export class CapcoContextMenu extends React.Component<
   };
 
   componentDidMount() {
-    
+
     requestAnimationFrame(() => this.focusFirstItem());
     // Perform asynchronous operation, for example, fetch data from a server
     // const response = await fetch('https://api.example.com/data');
