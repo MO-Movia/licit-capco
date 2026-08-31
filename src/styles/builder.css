@@ -8,12 +8,12 @@
   float: right;
   margin-top: 5px;
   margin-right: 10px;
-  background-color: #007bff;
-  border-color: #007bff;
-  color: white;
+  background-color: #0056b3;
+  border-color: #0056b3;
+  color: #fff;
   width: 68px;
   height: 33px;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 /* CAPCO marking mode set to manual
@@ -143,7 +143,7 @@
   grid-gap: 10px;
   grid-template-columns: auto auto;
   height: 45px;
-  color: white;
+  color: #f8f9fa;
 }
 
 .czi-editor-frameset .molcap-builder-card-header {
@@ -167,7 +167,7 @@
   grid-gap: 5px;
   grid-template-columns: auto auto;
   padding: 5px;
-  color: white;
+  color: #212529;
 }
 
 .czi-editor-frameset .molcap-builder-card-body {
@@ -270,11 +270,11 @@
 
 .czi-editor-frameset .molcap-btn-text {
   padding-top: 3px;
-  color: grey;
+  color: #595959;
   font-size: 20px;
   border-radius: 20px;
-  border-color: grey;
-  background-color: white;
+  border-color: #595959;
+  background-color: #fff;
   font-weight: 600;
   width: 341px;
   height: 45px;
@@ -294,9 +294,9 @@
   margin-top: 9px;
   margin-right: 32px;
   font-size: 12px;
-  background-color: grey;
+  background-color: #595959;
   border: none;
-  color: white;
+  color: #fff;
   border-radius: 8px;
 }
 

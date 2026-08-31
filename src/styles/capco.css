@@ -1,8 +1,10 @@
-.ProseMirror.czi-prosemirror-editor[contenteditable="true"] .capco.ProseMirror-widget:hover {
+.ProseMirror.czi-prosemirror-editor[contenteditable='true']
+  .capco.ProseMirror-widget:hover {
   cursor: pointer;
 }
 
-.ProseMirror.czi-prosemirror-editor[contenteditable="false"] .capco.ProseMirror-widget:hover {
+.ProseMirror.czi-prosemirror-editor[contenteditable='false']
+  .capco.ProseMirror-widget:hover {
   cursor: text;
 }
 
@@ -18,7 +20,7 @@
 .czi-editor-frameset .molcap-context-menu {
   font-family: calibri, serif;
   font-size: 16px;
-  background: white;
+  background: #fff;
   border: 1px solid #a9a5a5;
   border-radius: 1px;
   box-shadow: 0 5px 5px #c3c3c3;
@@ -87,12 +89,11 @@
   height: fit-content;
   margin-top: 9px;
   font-size: 12px;
-  background-color: #be5757;
+  background-color: #a64545;
   border: none;
   color: white;
   border-radius: 6px;
   opacity: 0;
-
 
   &:hover {
     opacity: 1;
@@ -193,18 +194,19 @@
 }
 
 /*  Default — no prefix spans — capco is relative */
-.ProseMirror p[hangingindent="true"] capco-mark.ProseMirror-widget {
-    position: relative;
-    flex-shrink: 0;
-    white-space: nowrap;
-    overflow: visible;
+.ProseMirror p[hangingindent='true'] capco-mark.ProseMirror-widget {
+  position: relative;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: visible;
 }
- 
+
 /* Has prefix spans — capco is absolute */
-.ProseMirror p[hangingindent="true"]:has(span[prefix="0"]) capco-mark.ProseMirror-widget {
-    position: absolute;
-    flex-shrink: 0;
-    white-space: nowrap;
-    overflow: visible;
+.ProseMirror
+  p[hangingindent='true']:has(span[prefix='0'])
+  capco-mark.ProseMirror-widget {
+  position: absolute;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: visible;
 }
- 
