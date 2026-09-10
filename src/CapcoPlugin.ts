@@ -430,7 +430,19 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
       TS: 'Top Secret',
       CUI: 'Controlled Unclassified Information',
     };
-    return capcoString[capco] || capco;
+    if (capcoString[capco]) {
+      return capcoString[capco];
+    }
+    // Handle portion markings with controls (e.g. "U//NF", "S//REL TO USA")
+    const slashIndex = capco.indexOf('//');
+    if (slashIndex > 0) {
+      const baseClass = capco.substring(0, slashIndex);
+      const mapped = capcoString[baseClass];
+      if (mapped) {
+        return mapped + capco.substring(slashIndex);
+      }
+    }
+    return capco;
   }
 
   handleOnEnter(view: EditorView, _event: KeyboardEvent): boolean {
@@ -711,7 +723,7 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
   getCapcoFromSlice(slice: Slice): string | null {
     let capco: string | null = null;
     if (this.mode !== CAPCOMODE.NONE &&
-      slice.content?.childCount !== 0
+      slice.content?.childCount
     ) {
       // Copy full paragraph, the pasted paragraph shall have same CAPCO.
       // target line is in length - 3 always.
@@ -772,10 +784,12 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
           capco = this.defaultCapco;
         }
         const pos = this.findNodeIndexPos(view.state.doc, source).pos;
-        this.pendingItems.push({
-          pos,
-          attrs: this.resetCapco(orgSlice, capco),
-        });
+        if (pos >= 0) {
+          this.pendingItems.push({
+            pos,
+            attrs: this.resetCapco(orgSlice, capco),
+          });
+        }
       }
     }
     // continue with normal process.
@@ -807,6 +821,7 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
 
     const capcoColors: Record<string, string> = {
       UNCLASSIFIED: '#006E3A', // green
+      U: '#006E3A', // green
       CONFIDENTIAL: '#0000FF', // blue
       C: '#0000FF', // blue
       'CONTROLLED UNCLASSIFIED INFORMATION': '#990099', // purple
@@ -839,11 +854,17 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
       }
 
       const colorKey = capcoText.toUpperCase();
+      // For portion markings with controls (e.g. "U//LES", "S//REL TO USA"),
+      // fall back to the base classification before "//" for color lookup.
+      const baseClassKey = colorKey.split('//')[0];
+      const resolvedColorKey = capcoColors[colorKey]
+        ? colorKey
+        : baseClassKey;
       if (
         parentNode.parent.type.name === TABLE_FIGURE &&
-        capcoColors[colorKey]
+        capcoColors[resolvedColorKey]
       ) {
-        capcoMark.style.color = capcoColors[colorKey];
+        capcoMark.style.color = capcoColors[resolvedColorKey];
         capcoMark.style.textTransform = 'uppercase';
       }
     }

@@ -247,7 +247,7 @@ export class CapcoContextMenu extends React.Component<
     // Preserve the user's selection: switching CAPCO must not collapse it.
     const originalSelection = this.props.editorView.state.selection;
     let pos = this.props.pos - 1; // nodeAt and setNodeMarkup resolve to the node AFTER the given position, so -1 to correct for that.
-    let enhanced_capco_pos = pos;
+    const enhanced_capco_pos = pos;
     let node = this.props.editorView.state.doc.nodeAt(pos);
     if (!node) {
       const $from = this.props.editorView.state.selection.$from;
@@ -324,19 +324,16 @@ export class CapcoContextMenu extends React.Component<
         enhanced_capco_pos = enhanced_capco_pos + 2;
         enhanced_capco_node = tr.doc?.nodeAt(enhanced_capco_pos);
       }
-      const newAttrs = {
-        ...enhanced_capco_node?.attrs,
-        [CAPCOKEY]: safeCapcoParse(capco).portionMarking,
-        ['isValidate']: false,
-      };
-      tr.setNodeMarkup(enhanced_capco_pos, null, newAttrs);
+      if (enhanced_capco_node) {
+        const newAttrs = {
+          ...enhanced_capco_node.attrs,
+          [CAPCOKEY]: capco ? safeCapcoParse(capco).portionMarking : null,
+          ['isValidate']: false,
+        };
+        tr.setNodeMarkup(enhanced_capco_pos, null, newAttrs);
+      }
     }
     if (node?.type?.name === TABLE_FIGURE_CAPCO) {
-      const newAttrs = {
-        ...ParentNodeType?.attrs,
-        [CAPCOKEY]: safeCapcoParse(capco).portionMarking,
-        ['isValidate']: false,
-      };
       const enhanced_capco_node = tr.doc?.nodeAt(pos);
       if (
         ParentNodeType?.type?.name !== TABLE &&
@@ -344,9 +341,17 @@ export class CapcoContextMenu extends React.Component<
       ) {
         pos = pos + 2;
       }
-      const { schema } = this.props.editorView.state;
-      tr = this.markEnhancedTableFigureDirty(tr, this.props.editorView.state, pos, schema?.nodes?.enhanced_table_figure);
-      tr.setNodeMarkup(pos, null, newAttrs);
+      const footerNode = tr.doc?.nodeAt(pos);
+      if (footerNode) {
+        const newAttrs = {
+          ...ParentNodeType?.attrs,
+          [CAPCOKEY]: capco ? safeCapcoParse(capco).portionMarking : null,
+          ['isValidate']: false,
+        };
+        const { schema } = this.props.editorView.state;
+        tr = this.markEnhancedTableFigureDirty(tr, this.props.editorView.state, pos, schema?.nodes?.enhanced_table_figure);
+        tr.setNodeMarkup(pos, null, newAttrs);
+      }
     }
     return tr;
   }
@@ -387,9 +392,7 @@ export class CapcoContextMenu extends React.Component<
     } else {
       this.getcapcoRunTime()
         ?.openManagementDialog(
-          safeCapcoParse(
-            this.props.editorView.state.selection.$head.parent.attrs.capco
-          )
+          this.props.editorView.state.selection.$head.parent.attrs.capco
         )
         .then((customCapco: CapcoState | null) => {
           if (customCapco) {
