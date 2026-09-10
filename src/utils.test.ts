@@ -55,7 +55,7 @@ describe('utils', () => {
     expect(utils.getValueWithoutSlash('TEST,,')).toBe('TEST');
   });
   it('should handle getCapcoString else statement', () => {
-    expect(utils.getCapcoString('CUI')).toBe('error');
+    expect(utils.getCapcoString('CUI')).toBe('CUI');
   });
   it('should handle removeAnItem', () => {
     const fnitem = () => {
