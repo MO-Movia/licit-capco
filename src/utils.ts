@@ -58,13 +58,16 @@ export function safeCapcoParse(
   fallback?: CapcoState
 ): CapcoState {
   const resolvedFallback: CapcoState =
-    fallback ?? { ism: undefined, portionMarking: 'error' };
+    fallback ?? {
+      ism: { system: 'US', classification: { key: 'TBD', value: 'TBD' } },
+      portionMarking: 'error',
+    };
 
   if (capco && typeof capco === 'string') {
     try {
       return JSON.parse(capco) as CapcoState;
-    } catch (e) {
-      console.warn('could not parse capco text: ' + capco, e);
+    } catch (_e) {
+      // Not JSON — fall through to the resolved fallback.
     }
   }
 
@@ -77,8 +80,19 @@ export function safeCapcoParse(
 
 
 export function getCapcoString(capco: unknown, fallback = 'error'): string {
-  const portionMarking = safeCapcoParse(capco, { ism: null, portionMarking: fallback })
-    .portionMarking;
+  // If capco is a non-JSON string (e.g. EIC footer stores just the portion
+  // marking like "S", "U//LES", "TBD"), return it directly.
+  if (capco && typeof capco === 'string') {
+    try {
+      JSON.parse(capco);
+    } catch (_e) {
+      return capco.trim() ? capco : 'TBD';
+    }
+  }
+  const portionMarking = safeCapcoParse(capco, {
+    ism: { system: 'US', classification: { key: 'TBD', value: 'TBD' } },
+    portionMarking: fallback,
+  }).portionMarking;
   return portionMarking?.trim() ? portionMarking : 'TBD';
 }
 

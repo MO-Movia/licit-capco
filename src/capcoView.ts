@@ -29,7 +29,7 @@ export class CapcoView implements NodeView {
       outerView.dom.ownerDocument,
       this.node.type.spec.toDOM(this.node)
     );
-    this.dom = spec.dom;
+    this.dom = spec.dom as HTMLElement;
   }
 
   update(node: Node): boolean {
