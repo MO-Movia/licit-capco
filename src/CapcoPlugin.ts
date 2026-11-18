@@ -182,8 +182,14 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
   }
 
   isSpecialTableHeader(tableNode: Node): boolean {
+    // Only table nodes can contain special table headers; skip the subtree
+    // scan entirely for other node types (this runs per allowed block on
+    // every document change via getDecorations).
+    if (tableNode?.type?.name !== TABLE) {
+      return false;
+    }
     let isTableHeader = false;
-    if (tableNode?.type?.name === TABLE && tableNode?.attrs?.vignette) {
+    if (tableNode.attrs?.vignette) {
       return true;
     }
     tableNode.descendants((node) => {
@@ -306,7 +312,7 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
     transactions: readonly Transaction[],
     _oldState: EditorState,
     newState: EditorState
-  ): Transaction {
+  ): Transaction | null {
     let trx = newState.tr;
     const selTrx = transactions[0];
     if ('drop' === selTrx.getMeta('uiEvent')) {
@@ -320,7 +326,10 @@ export class CapcoPlugin extends Plugin<CapcoPluginState> {
       newState.schema
     );
     this.pendingItems = [];
-    return trx;
+    // Returning an empty transaction still gets pushed onto the
+    // appendTransaction wave, forcing every later plugin to run an extra
+    // pass. Only return a transaction when it actually contains steps.
+    return trx?.steps?.length ? trx : null;
   }
 
   getDecorations(state) {
